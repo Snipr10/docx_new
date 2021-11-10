@@ -48,18 +48,15 @@ app = Flask(__name__)
 @app.route('/get_report', methods=['GET'])
 def index():
     session = requests.session()
-    cookies_jar = requests.cookies.RequestsCookieJar()
 
-    cookies = request.cookies
-    if cookies:
-        for key, value in request.cookies.to_dict(flat=False).items():
-            cookies_jar.set(key, value, domain=".glassen-it.com", path="/")
-
-    session.cookies = cookies_jar
+    session = login(session, request.args.get('login'), request.args.get('password'))
     period = request.args.get('period')
-    reference_ids = json.loads(request.args.get('reference_ids'))
+    reference_ids_str = request.args.getlist('reference_ids[]')
+    reference_ids = []
+    for id_ in reference_ids_str:
+        reference_ids.append(int(id_))
     try:
-        document = create_report(reference_ids, period)
+        document = create_report(reference_ids, session, int(request.args.get('thread_id')), period)
         f = BytesIO()
 
         document.save(f)
@@ -264,10 +261,10 @@ def update_center_right(row_cell):
     row_cell.paragraphs[0].alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.RIGHT
 
 
-def login(session):
+def login(session, login, password):
     payload = {
-        "login": "Kom_pvsmi@gov.spb.ru",
-        "password": "m0fpoemZc3K1"
+        "login": login,
+        "password": password
     }
     response = session.post(LOGIN_URL, json=payload)
     if not response.ok:
@@ -692,7 +689,8 @@ async def get_trust_for_sub(session, reference_id, network_ids, title, period, t
 
 
 async def get_start_date(session):
-    return await asyncio.gather(get_thread_id(session), subects(session))
+    return await subects(session)
+    # return await asyncio.gather(get_thread_id(session), subects(session))
 
 
 async def get_posts_statistic(session, period, sub, thread_id, reference_ids):
@@ -774,7 +772,7 @@ def add_hyperlink(paragraph, url, text, color, underline, is_italic=False):
     return hyperlink
 
 
-def create_report(reference_ids, period="day"):
+def create_report(reference_ids, session, thread_id, period="day"):
     today_all = datetime.today()
     today = today_all.strftime('%d-%m-%Y')
     if period == "day":
@@ -792,11 +790,8 @@ def create_report(reference_ids, period="day"):
 
     add_title(document, today_str)
 
-    session = requests.session()
-    session = login(session)
-
     loop = asyncio.new_event_loop()
-    thread_id, sub = loop.run_until_complete(
+    sub = loop.run_until_complete(
         asyncio.wait_for(
             get_start_date(session), 300)
     )
@@ -804,7 +799,6 @@ def create_report(reference_ids, period="day"):
     topics_tables, statistic_tables, trust_tables, charts_data = loop.run_until_complete(
         asyncio.wait_for(get_tables(session, period, sub, thread_id, reference_ids), 300)
     )
-
     table_number = 1
 
     add_table_title = True
@@ -1246,5 +1240,33 @@ def add_chart_document_old(document, chart_number, statistic_chart_title, statis
 
 
 if __name__ == "__main__":
+
+    # session = requests.session()
+    #
+    # session = login(session, "Kom_pvsmi@gov.spb.ru", "m0fpoemZc3K1")
+    #
+    # period = "month"
+    # reference_ids = ["1056"]
+    # print(reference_ids)
+    # for s in reference_ids:
+    #     print(s)
+    # try:
+    #     document = create_report(reference_ids, session, period)
+    #     f = BytesIO()
+    #
+    #     document.save(f)
+    #     f.seek(0)
+    #
+    #     # return send_file(
+    #     #     f,
+    #     #     as_attachment=True,
+    #     #     attachment_filename='report.docx'
+    #     # )
+    #
+    # except Exception as e:
+    #     print(e)
+    #     # return "Что-то пошло не так"
+    # #
+    # #
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=True, host='0.0.0.0', port=port)
