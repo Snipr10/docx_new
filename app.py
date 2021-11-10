@@ -1,5 +1,4 @@
 import asyncio
-import json
 import os
 
 import docx
@@ -1240,33 +1239,5 @@ def add_chart_document_old(document, chart_number, statistic_chart_title, statis
 
 
 if __name__ == "__main__":
-
-    # session = requests.session()
-    #
-    # session = login(session, "Kom_pvsmi@gov.spb.ru", "m0fpoemZc3K1")
-    #
-    # period = "month"
-    # reference_ids = ["1056"]
-    # print(reference_ids)
-    # for s in reference_ids:
-    #     print(s)
-    # try:
-    #     document = create_report(reference_ids, session, period)
-    #     f = BytesIO()
-    #
-    #     document.save(f)
-    #     f.seek(0)
-    #
-    #     # return send_file(
-    #     #     f,
-    #     #     as_attachment=True,
-    #     #     attachment_filename='report.docx'
-    #     # )
-    #
-    # except Exception as e:
-    #     print(e)
-    #     # return "Что-то пошло не так"
-    # #
-    # #
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=True, host='0.0.0.0', port=port)
