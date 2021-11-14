@@ -835,6 +835,7 @@ def create_report(reference_ids, session, thread_id, period="day"):
 
     chart_number = 1
     add_chart_title = True
+    add_break = False
     for statistic_chart_title, statist_chart_data in charts_data:
         if add_chart_title:
             document.add_page_break()
@@ -843,8 +844,9 @@ def create_report(reference_ids, session, thread_id, period="day"):
         add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data, today_str, today_all,
                            period)
         chart_number += 2
-
-    document.add_page_break()
+        add_break = not add_break
+    if add_break:
+        document.add_page_break()
     add_title_text(document, "ТОПы публикаций по СМИ и социальным сетям", True)
 
     first = True
