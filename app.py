@@ -707,7 +707,7 @@ async def get_posts_statistic(session, period, sub, thread_id, reference_ids):
 
 
 async def post_static(session, reference_id, thread_id, period, chart_name):
-    limit = 100
+    limit = 200
     start = 0
     posts = []
     while True:
@@ -721,7 +721,7 @@ async def post_static(session, reference_id, thread_id, period, chart_name):
         }
         response = session.post(STATISTIC_POST_URL, json=payload)
         posts.extend(response.json().get("posts") or [])
-        if response.json().get("count") <= len(posts):
+        if response.json().get("posts") or response.json().get("count") <= len(posts):
             break
         start += limit
     return posts, chart_name
