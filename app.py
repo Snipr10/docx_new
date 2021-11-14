@@ -951,9 +951,13 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
             categories_str.append(f"{start_date.day}.{start_date.month}")
             start_date += timedelta(days=1)
 
-    negative_list = [0] * len(categories)
-    neutral_list = [0] * len(categories)
-    positive_list = [0] * len(categories)
+    negative_list_smi = [0] * len(categories)
+    neutral_list_smi = [0] * len(categories)
+    positive_list_smi = [0] * len(categories)
+    negative_list_social = [0] * len(categories)
+    neutral_list_social = [0] * len(categories)
+    positive_list_social = [0] * len(categories)
+
     look_list = [0] * len(categories)
 
     smi_list = [0] * len(categories)
@@ -964,12 +968,20 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
             for i in range(len(categories)):
                 if categories[i] == day:
                     look_list[i] += int(post['viewed'])
-                    if post['trust']['trust'] == 0:
-                        neutral_list[i] += 1
-                    elif post['trust']['trust'] == -1:
-                        negative_list[i] += 1
+                    if int(post['network_id']) == 4:
+                        if post['trust']['trust'] == 0:
+                            neutral_list_smi[i] += 1
+                        elif post['trust']['trust'] == -1:
+                            negative_list_smi[i] += 1
+                        else:
+                            positive_list_smi[i] += 1
                     else:
-                        positive_list[i] += 1
+                        if post['trust']['trust'] == 0:
+                            neutral_list_social[i] += 1
+                        elif post['trust']['trust'] == -1:
+                            negative_list_social[i] += 1
+                        else:
+                            positive_list_social[i] += 1
                     if int(post['network_id']) == 4:
                         smi_list[i] += 1
                     else:
@@ -979,12 +991,20 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
             for i in range(len(categories)):
                 if categories[i] == parse(post['created_date']).date():
                     look_list[i] += int(post['viewed'])
-                    if post['trust']['trust'] == 0:
-                        neutral_list[i] += 1
-                    elif post['trust']['trust'] == -1:
-                        negative_list[i] += 1
+                    if int(post['network_id']) == 4:
+                        if post['trust']['trust'] == 0:
+                            neutral_list_smi[i] += 1
+                        elif post['trust']['trust'] == -1:
+                            negative_list_smi[i] += 1
+                        else:
+                            positive_list_smi[i] += 1
                     else:
-                        positive_list[i] += 1
+                        if post['trust']['trust'] == 0:
+                            neutral_list_social[i] += 1
+                        elif post['trust']['trust'] == -1:
+                            negative_list_social[i] += 1
+                        else:
+                            positive_list_social[i] += 1
                     if int(post['network_id']) == 4:
                         smi_list[i] += 1
                     else:
@@ -996,15 +1016,35 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
     chart_data.add_series('Сми', update_chart_none(smi_list))
     chart_data.add_series('СоцСети', update_chart_none(social_list))
     x, y, cx, cy = Inches(-3.5), Inches(0), Inches(6.15), Inches(3.5)
+
     chart = document.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data)
     change_color(chart.plots[0].series[0], RGBColor(255, 134, 13))
     change_color(chart.plots[0].series[1], RGBColor(87, 57, 132))
 
     update_chart_style(chart)
+    chart_number += 1
+    add_table_tonal(document, "социальных сетях", chart_number, statistic_chart_title, today, categories_str,
+                    negative_list_smi, neutral_list_smi, positive_list_smi,
+                    x, y, cx, cy)
+    chart_number += 1
+    if chart_number % 2 == 1 and period == "day":
+        parag_table = document.add_paragraph()
+        parag_table.add_run(
+            f' ',
+            style=STYLE
+        )
+    add_table_tonal(document, "СМИ", chart_number, statistic_chart_title, today, categories_str,
+                    negative_list_social, neutral_list_social, positive_list_social,
+                    x, y, cx, cy)
 
+
+def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_title, today, categories_str,
+                    negative_list, neutral_list, positive_list,
+                    x, y, cx, cy
+                    ):
     parag_table = document.add_paragraph()
     parag_table.add_run(
-        f' График {chart_number + 1} - Динамика распространения публикаций с упоминанием ',
+        f' График {chart_number + 1} - Динамика распространения публикаций в {chart_title_type_} с упоминанием ',
         style=STYLE
     )
     add_name(parag_table, statistic_chart_title)
@@ -1027,215 +1067,6 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
     change_color_line(chart.plots[0].series[2].format.line, RGBColor(0, 255, 0))
 
     update_chart_style(chart)
-
-
-def add_chart_document_old(document, chart_number, statistic_chart_title, statist_chart_data, today, today_all, period):
-    parag_table = document.add_paragraph()
-    parag_table.add_run(
-        f'\n График {chart_number} - Динамика публикаций в СМИ и социальных сетях с упоминанием ',
-        style=STYLE
-    )
-    add_name(parag_table, statistic_chart_title)
-    parag_table.add_run(
-        f', тональности {today}',
-        style=STYLE
-    )
-    parag_table.paragraph_format.space_after = Inches(0)
-    categories = []
-    categories_str = []
-    if period == "day":
-        for i in range(today_all.hour + 1):
-            categories.append(i)
-            categories_str.append(f"{i}.00")
-    else:
-        start_date = get_from_date_datetime(period).date()
-        while start_date <= today_all.date():
-            categories.append(start_date)
-            categories_str.append(f"{start_date.day}.{start_date.month}")
-            start_date += timedelta(days=1)
-
-    negative_list = [0] * len(categories)
-    look_list = [0] * len(categories)
-    neutral_list = [0] * len(categories)
-    smi_list = [0] * len(categories)
-    social_list = [0] * len(categories)
-    if period == "day":
-        for post in statist_chart_data:
-            day = parse(post['created_date']).day
-            for i in range(len(categories)):
-                if categories[i] == day:
-                    look_list[i] += int(post['viewed'])
-                    if post['trust']['trust'] == 0:
-                        neutral_list[i] += 1
-                    elif post['trust']['trust'] == -1:
-                        negative_list[i] += 1
-                    if int(post['network_id']) == 4:
-                        smi_list[i] += 1
-                    else:
-                        social_list[i] += 1
-    else:
-        for post in statist_chart_data:
-            for i in range(len(categories)):
-                if categories[i] == parse(post['created_date']).date():
-                    look_list[i] += int(post['viewed'])
-                    if post['trust']['trust'] == 0:
-                        neutral_list[i] += 1
-                    elif post['trust']['trust'] == -1:
-                        negative_list[i] += 1
-                    if int(post['network_id']) == 4:
-                        smi_list[i] += 1
-                    else:
-                        social_list[i] += 1
-
-    chart_data = CategoryChartData()
-    chart_data.categories = categories_str
-    chart_data.add_series('Негатив', negative_list)
-    chart_data.add_series('Нейтраль', neutral_list)
-    chart_data.add_series('Просмотры', look_list)
-
-    x, y, cx, cy = Inches(-1), Inches(0), Inches(7), Inches(6)
-    chart = document.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data)
-
-    chart.has_legend = True
-    chart.legend.position = XL_LEGEND_POSITION.BOTTOM
-    chart.legend.include_in_layout = False
-    chart.legend.font.size = Pt(10)
-    chart.legend.font.name = STYLE
-
-    plot = chart.plots[0]
-    plot.has_data_labels = True
-    data_labels = plot.data_labels
-    data_labels.font.size = Pt(1)
-
-    value_axis = chart.value_axis
-    value_axis.tick_label_position = XL_TICK_LABEL_POSITION.HIGH
-    category_axis = chart.category_axis
-    value_axis.format.line.color.rgb = RGBColor(255, 255, 255)
-    value_axis.minor_tick_mark = XL_TICK_MARK.NONE
-    category_axis.minor_tick_mark = XL_TICK_MARK.NONE
-
-    value_axis = chart.value_axis
-    value_axis.has_major_gridlines = False
-
-    chart.category_axis.tick_labels.font.size = Pt(10)
-    chart.category_axis.tick_labels.font.name = STYLE
-    chart.value_axis.tick_labels.font.size = Pt(10)
-    chart.value_axis.tick_labels.font.name = STYLE
-
-    shape_properties = OxmlElement("c:spPr")
-    chart.element.append(shape_properties)
-
-    fill_properties = OxmlElement("a:ln")
-    shape_properties.append(fill_properties)
-    scheme_color = OxmlElement("a:noFill")
-
-    fill_properties.append(scheme_color)
-
-    from lxml import etree
-
-    namespaces = {
-        "a": ("http://schemas.openxmlformats.org/drawingml/2006/main"),
-        "c": ("http://schemas.openxmlformats.org/drawingml/2006/chart"),
-        "cp": (
-            "http://schemas.openxmlformats.org/package/2006/metadata/core-pro" "perties"
-        ),
-        "ct": ("http://schemas.openxmlformats.org/package/2006/content-types"),
-        "dc": ("http://purl.org/dc/elements/1.1/"),
-        "dcmitype": ("http://purl.org/dc/dcmitype/"),
-        "dcterms": ("http://purl.org/dc/terms/"),
-        "ep": (
-            "http://schemas.openxmlformats.org/officeDocument/2006/extended-p" "roperties"
-        ),
-        "i": (
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationsh" "ips/image"
-        ),
-        "m": ("http://schemas.openxmlformats.org/officeDocument/2006/math"),
-        "mo": ("http://schemas.microsoft.com/office/mac/office/2008/main"),
-        "mv": ("urn:schemas-microsoft-com:mac:vml"),
-        "o": ("urn:schemas-microsoft-com:office:office"),
-        "p": ("http://schemas.openxmlformats.org/presentationml/2006/main"),
-        "pd": ("http://schemas.openxmlformats.org/drawingml/2006/presentationDra" "wing"),
-        "pic": ("http://schemas.openxmlformats.org/drawingml/2006/picture"),
-        "pr": ("http://schemas.openxmlformats.org/package/2006/relationships"),
-        "r": ("http://schemas.openxmlformats.org/officeDocument/2006/relationsh" "ips"),
-        "sl": (
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationsh"
-            "ips/slideLayout"
-        ),
-        "v": ("urn:schemas-microsoft-com:vml"),
-        "ve": ("http://schemas.openxmlformats.org/markup-compatibility/2006"),
-        "w": ("http://schemas.openxmlformats.org/wordprocessingml/2006/main"),
-        "w10": ("urn:schemas-microsoft-com:office:word"),
-        "wne": ("http://schemas.microsoft.com/office/word/2006/wordml"),
-        "wp": ("http://schemas.openxmlformats.org/drawingml/2006/wordprocessingD" "rawing"),
-        "xsi": ("http://www.w3.org/2001/XMLSchema-instance"),
-    }
-
-    chart_data = CategoryChartData()
-    chart_data.categories = categories_str
-    chart_data.add_series('Сми', smi_list)
-    chart_data.add_series('СоцСети', social_list)
-
-    xml_bytes = ChartXmlWriter(XL_CHART_TYPE.COLUMN_STACKED, chart_data).xml
-    root_el = etree.parse(BytesIO(xml_bytes.encode('utf-8')))
-    new_axis_refs = [chart._chartSpace.plotArea.xpath("c:valAx/c:axId/@val"),
-                     chart._chartSpace.plotArea.xpath("c:catAx/c:axId/@val")]
-    series_count = len(chart._chartSpace.plotArea.xpath("*/c:ser"))
-    for el in root_el.xpath("/c:chartSpace/c:chart/c:plotArea/*", namespaces=namespaces):
-        if el.tag.endswith("Chart"):
-            for x in new_axis_refs:
-                el.append(etree.Element("{%s}axId" % namespaces['c'], val=x[0]))
-        chart._chartSpace.plotArea.append(el)
-
-    change_color(chart.plots[1].series[0], RGBColor(255, 255, 0))
-    change_color(chart.plots[1].series[1], RGBColor(201, 33, 30))
-    #
-    change_color_line(chart.plots[0].series[2].format.line, RGBColor(0, 0, 255))
-    change_color_line(chart.plots[0].series[0].format.line, RGBColor(255, 0, 0))
-    change_color_line(chart.plots[0].series[1].format.line, RGBColor(180, 180, 180))
-
-    category_axis = chart.category_axis
-
-    category_axis.visible = False
-
-    chart.category_axis.tick_labels.font.size = Pt(10)
-    chart.category_axis.tick_labels.font.name = STYLE
-
-    chart.plots[1].chart.category_axis.tick_labels.font.size = Pt(10)
-    chart.plots[1].chart.category_axis.tick_labels.font.name = STYLE
-    chart.plots[0].chart.category_axis.tick_labels.font.size = Pt(10)
-    chart.plots[0].chart.category_axis.tick_labels.font.name = STYLE
-
-    chart.plots[1].chart.chart_title.text_frame.paragraphs[0].font.size = Pt(3)
-    chart.plots[1].chart.category_axis.axis_title.text_frame.paragraphs[0].font.size = Pt(3)
-    for el in chart._chartSpace.plotArea[3:]:
-        if el.tag.endswith("Chart"):
-            try:
-                for i, x in enumerate(el.xpath("c:ser/c:order")):
-                    x.set("val", str(series_count + i))
-                a = 1
-            except Exception:
-                pass
-
-
-    plot = chart.plots[0]
-    plot.has_data_labels = True
-    data_labels = plot.data_labels
-    data_labels.font.size = Pt(10)
-    data_labels.font.name = STYLE
-    from pptx.enum.chart import XL_LABEL_POSITION
-
-    data_labels.position = XL_LABEL_POSITION.ABOVE
-    chart.plots[0].series[1].has_data_labels = False
-    chart.plots[0].series[1].show_value = False
-    data_labels = chart.plots[0].series[1].data_labels
-    data_labels.font.size = Pt(1)
-    chart.plots[0].series[0].has_data_labels = False
-    chart.plots[0].series[0].show_value = False
-    data_labels = chart.plots[0].series[0].data_labels
-    data_labels.font.size = Pt(1)
-    plot = chart.plots[0]
-    plot.chart.font.size = Pt(10)
 
 
 if __name__ == "__main__":
