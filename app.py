@@ -278,9 +278,10 @@ async def get_thread_id(session):
 async def subects(session):
     response = session.post(SUBECT_URL)
     try:
+        res = []
         for r in response.json():
-            if r['title'] == "Субъект":
-                return r['items'] or []
+            res.extend(r['items'] or [])
+        return res
     except Exception:
         return []
 
