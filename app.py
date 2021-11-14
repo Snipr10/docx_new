@@ -75,11 +75,15 @@ def change_table_font(table):
     for row in table.rows:
         for cell in row.cells:
             paragraphs = cell.paragraphs
-            for paragraph in paragraphs:
-                for run in paragraph.runs:
-                    font = run.font
-                    font.size = Pt(10.5)
-                    font.name = STYLE
+            update_pagagraphs(paragraphs)
+
+
+def update_pagagraphs(paragraphs):
+    for paragraph in paragraphs:
+        for run in paragraph.runs:
+            font = run.font
+            font.size = Pt(10.5)
+            font.name = STYLE
 
 
 def add_title(document, today):
@@ -495,6 +499,8 @@ def add_table_trust(document, table_number, header, table_data_range,
     table.style = 'TableGrid'
     add_col_name(table)
 
+    change_table_font(table)
+
     if table_data_range:
         row_cells = table.add_row().cells
         header_cell(row_cells, "ТОП-5 публикаций по охватам", "81e5f8")
@@ -508,7 +514,6 @@ def add_table_trust(document, table_number, header, table_data_range,
         header_cell(row_cells, "ТОП-5 негативных и противоречивых новостей", "d24141")
         add_top5(table, table_data_neg)
 
-    change_table_font(table)
 
 
 def add_col_name(table):
@@ -552,14 +557,26 @@ def add_top5(table, table_data):
             row_cells[3].paragraphs[0].part.style = STYLE
             row_cells[0].text = str(i + 1)
             row_cells[2].text = str(table_data[i][0]) + "\n"
+
+            row_cells[3].paragraphs[0].add_run(
+                f"{table_data[i][1]['created_date']}\n",
+                style=STYLE
+            )
+            row_cells[3].paragraphs[0].runs[-1].italic = True
+            row_cells[3].paragraphs[0].runs[-1].bold = True
+            row_cells[3].paragraphs[0].runs[-1].font.size = Pt(8)
+
             if table_data[0][1]['title']:
                 row_cells[3].paragraphs[0].add_run(
                     f"{table_data[i][1]['title']}\n\n",
                     style=STYLE
                 )
                 row_cells[3].paragraphs[0].runs[-1].bold = True
-                row_cells[3].paragraphs[0].runs[-1].font.size = Pt(8)
-
+            else:
+                row_cells[3].paragraphs[0].add_run(
+                    "\n",
+                    style=STYLE
+                )
             add_hyperlink(row_cells[1].paragraphs[0], table_data[i][1]['url'], table_data[i][1]['url'], None, True)
 
             text, add_link = remove_html_tags(table_data[i][1]['text'])
@@ -567,7 +584,6 @@ def add_top5(table, table_data):
             if add_link:
                 add_hyperlink(row_cells[3].paragraphs[0], table_data[i][1]['url'], "далее по ссылке", None, True, True)
 
-            row_cells[3].paragraphs[0].runs[-1].font.size = Pt(8)
             set_center(row_cells[2])
         except Exception:
             pass
