@@ -843,7 +843,7 @@ def create_report(reference_ids, session, thread_id, period="day"):
             add_chart_title = False
         add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data, today_str, today_all,
                            period)
-        chart_number += 2
+        chart_number += 3
         add_break = not add_break
     if add_break:
         document.add_page_break()
@@ -1063,7 +1063,7 @@ def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_t
                     ):
     parag_table = document.add_paragraph()
     parag_table.add_run(
-        f' График {chart_number + 1} - Динамика распространения публикаций в {chart_title_type_} с упоминанием ',
+        f' График {chart_number} - Динамика распространения публикаций в {chart_title_type_} с упоминанием ',
         style=STYLE
     )
     add_name(parag_table, statistic_chart_title)
