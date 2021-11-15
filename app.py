@@ -243,17 +243,19 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
         row_cells = table.add_row().cells
 
         row_cells[0].text = cell['header']
-
-        row_cells[1].text = str(cell['total']['posts'])
+        positive = int(cell['positive']['posts'])
+        negative = int(cell['negative']['posts'])
+        netural = int(cell['netural']['posts'])
+        row_cells[1].text = str(positive + negative + netural)
         set_center(row_cells[1])
 
-        row_cells[2].text = str(cell['positive']['posts'])
+        row_cells[2].text = str(positive)
         set_center(row_cells[2])
 
-        row_cells[3].text = str(cell['negative']['posts'])
+        row_cells[3].text = str(negative)
         set_center(row_cells[3])
 
-        row_cells[4].text = str(cell['netural']['posts'])
+        row_cells[4].text = str(netural)
         set_center(row_cells[4])
 
     change_table_font(table)
