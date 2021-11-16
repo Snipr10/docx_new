@@ -246,7 +246,9 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
         positive = int(cell['positive']['posts'])
         negative = int(cell['negative']['posts'])
         netural = int(cell['netural']['posts'])
-        row_cells[1].text = str(positive + negative + netural)
+        total = int(cell['total']['posts'])
+
+        row_cells[1].text = str(total)
         set_center(row_cells[1])
 
         row_cells[2].text = str(positive)
@@ -255,7 +257,7 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
         row_cells[3].text = str(negative)
         set_center(row_cells[3])
 
-        row_cells[4].text = str(netural)
+        row_cells[4].text = str(total - positive - negative)
         set_center(row_cells[4])
 
     change_table_font(table)
@@ -994,19 +996,19 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
                 if categories[i] == day:
                     look_list[i] += int(post['viewed'])
                     if int(post['network_id']) == 4:
-                        if post['trust']['trust'] == 0:
-                            neutral_list_smi[i] += 1
+                        if post['trust']['trust'] == 1:
+                            positive_list_smi[i] += 1
                         elif post['trust']['trust'] == -1:
                             negative_list_smi[i] += 1
                         else:
-                            positive_list_smi[i] += 1
+                            neutral_list_smi[i] += 1
                     else:
-                        if post['trust']['trust'] == 0:
-                            neutral_list_social[i] += 1
+                        if post['trust']['trust'] == 1:
+                            positive_list_social[i] += 1
                         elif post['trust']['trust'] == -1:
                             negative_list_social[i] += 1
                         else:
-                            positive_list_social[i] += 1
+                            neutral_list_social[i] += 1
                     if int(post['network_id']) == 4:
                         smi_list[i] += 1
                     else:
@@ -1017,19 +1019,19 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
                 if categories[i] == parse(post['created_date']).date():
                     look_list[i] += int(post['viewed'])
                     if int(post['network_id']) == 4:
-                        if post['trust']['trust'] == 0:
-                            neutral_list_smi[i] += 1
+                        if post['trust']['trust'] == 1:
+                            positive_list_smi[i] += 1
                         elif post['trust']['trust'] == -1:
                             negative_list_smi[i] += 1
                         else:
-                            positive_list_smi[i] += 1
+                            neutral_list_smi[i] += 1
                     else:
-                        if post['trust']['trust'] == 0:
-                            neutral_list_social[i] += 1
+                        if post['trust']['trust'] == 1:
+                            positive_list_social[i] += 1
                         elif post['trust']['trust'] == -1:
                             negative_list_social[i] += 1
                         else:
-                            positive_list_social[i] += 1
+                            neutral_list_social[i] += 1
                     if int(post['network_id']) == 4:
                         smi_list[i] += 1
                     else:
@@ -1048,9 +1050,11 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
 
     update_chart_style(chart)
     chart_number += 1
+
     add_table_tonal(document, "социальных сетях", chart_number, statistic_chart_title, today, categories_str,
-                    negative_list_smi, neutral_list_smi, positive_list_smi,
+                    negative_list_social, neutral_list_social, positive_list_social,
                     x, y, cx, cy)
+
     chart_number += 1
     if chart_number % 2 == 1 and period == "day":
         parag_table = document.add_paragraph()
@@ -1059,7 +1063,7 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
             style=STYLE
         )
     add_table_tonal(document, "СМИ", chart_number, statistic_chart_title, today, categories_str,
-                    negative_list_social, neutral_list_social, positive_list_social,
+                    negative_list_smi, neutral_list_smi, positive_list_smi,
                     x, y, cx, cy)
 
 
@@ -1085,11 +1089,15 @@ def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_t
     chart_data.add_series('Негативные', negative_list)
     chart_data.add_series('Нейтральные', neutral_list)
     chart_data.add_series('Позитивные', positive_list)
-    chart = document.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data)
+    chart = document.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data)
 
-    change_color_line(chart.plots[0].series[0].format.line, RGBColor(255, 0, 0))
-    change_color_line(chart.plots[0].series[1].format.line, RGBColor(180, 180, 180))
-    change_color_line(chart.plots[0].series[2].format.line, RGBColor(0, 255, 0))
+    # change_color_line(chart.plots[0].series[0].format.line, RGBColor(255, 0, 0))
+    # change_color_line(chart.plots[0].series[1].format.line, RGBColor(180, 180, 180))
+    # change_color_line(chart.plots[0].series[2].format.line, RGBColor(0, 255, 0))
+
+    change_color(chart.plots[0].series[0], RGBColor(255, 0, 0))
+    change_color(chart.plots[0].series[1], RGBColor(180, 180, 180))
+    change_color(chart.plots[0].series[2], RGBColor(0, 255, 0))
 
     update_chart_style(chart)
 
