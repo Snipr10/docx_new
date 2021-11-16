@@ -43,7 +43,7 @@ PT = Pt(10.5)
 
 app = Flask(__name__)
 
-
+UTC = 3
 @app.route('/get_report', methods=['GET'])
 def index():
     session = requests.session()
@@ -322,16 +322,15 @@ def get_from_date(period):
 def get_from_date_datetime(period):
     date_from = None
     if period == "day":
-        date_from = datetime.today()
+        date_from = datetime.today() + timedelta(hours=UTC)
     elif period == "week":
-        date_from = datetime.today() - timedelta(days=7)
+        date_from = datetime.today() - timedelta(days=7) + timedelta(hours=UTC)
     elif period == "month":
-        date_from = datetime.today() - relativedelta(months=1)
+        date_from = datetime.today() - relativedelta(months=1) + timedelta(hours=UTC)
     return date_from
 
 
 async def subects_static(session, reference_id, thread_id, period, table_name, today_all):
-    datetime.today() - relativedelta(months=1)
 
     payload = {
         "thread_id": thread_id,
@@ -416,7 +415,7 @@ async def add_statistic(session, period, sub, thread_id, reference_ids, today_al
     return tables
 
 
-async def get_trust_stat(session, thread_id, reference_ids, period, network_id, post_count, negative=None, today_all=datetime.today()):
+async def get_trust_stat(session, thread_id, reference_ids, period, network_id, post_count, negative=None, today_all=datetime.today() + timedelta(hours=UTC)):
     payload = {
         "thread_id": thread_id,
         "negative": negative,
@@ -794,12 +793,12 @@ def add_hyperlink(paragraph, url, text, color, underline, is_italic=False):
 
 def create_report(reference_ids, session, thread_id, period="day"):
     if period == "day":
-        today_all = datetime.today()
+        today_all = datetime.today() + timedelta(hours=UTC)
         today = today_all.strftime('%d-%m-%Y')
         today_str = f"на {today}"
 
     else:
-        today_all = datetime.today() - timedelta(days=1)
+        today_all = datetime.today() + timedelta(hours=UTC) - timedelta(days=1)
         today_all = datetime(today_all.year, today_all.month, today_all.day, 23, 59, 59)
         today = today_all.strftime('%d-%m-%Y')
         today_str = f"за период с {get_from_date_datetime(period).strftime('%d-%m-%Y')} по {today}"
