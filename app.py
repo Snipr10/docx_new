@@ -324,17 +324,17 @@ def get_from_date_datetime(period):
     elif period == "week":
         date_from = datetime.today() - timedelta(days=7)
     elif period == "month":
-        date_from = datetime.today() - relativedelta(months=1) + timedelta(days=1)
+        date_from = datetime.today() - relativedelta(months=1)
     return date_from
 
 
-async def subects_static(session, reference_id, thread_id, period, table_name):
+async def subects_static(session, reference_id, thread_id, period, table_name, today_all):
     datetime.today() - relativedelta(months=1)
 
     payload = {
         "thread_id": thread_id,
         "from": get_from_date(period),
-        "to": datetime.today().strftime('%Y-%m-%d %H:%M:%S'),
+        "to": today_all.strftime('%Y-%m-%d %H:%M:%S'),
         "filter": {"referenceFilter": [reference_id]}
     }
     response = session.post(STATISTIC_URL, json=payload)
@@ -377,7 +377,7 @@ async def subects_static(session, reference_id, thread_id, period, table_name):
     return res_gs, res_soc, table_name
 
 
-async def add_topics(session, period, sub, thread_id, reference_ids):
+async def add_topics(session, period, sub, thread_id, reference_ids, today_all):
     tables = []
     table_gather = []
     for s in sub:
@@ -391,7 +391,7 @@ async def add_topics(session, period, sub, thread_id, reference_ids):
     return tables
 
 
-async def add_statistic(session, period, sub, thread_id, reference_ids):
+async def add_statistic(session, period, sub, thread_id, reference_ids, today_all):
     tables = []
     table_data_smi = []
     table_data_soc = []
@@ -399,7 +399,7 @@ async def add_statistic(session, period, sub, thread_id, reference_ids):
     for s in sub:
         reference_id = s['id']
         if reference_id in reference_ids:
-            table_gather.append(subects_static(session, reference_id, thread_id, period, s['keyword']))
+            table_gather.append(subects_static(session, reference_id, thread_id, period, s['keyword'], today_all))
     for row_gs, ros_soc, table_name in await asyncio.gather(*table_gather):
         if row_gs:
             row_gs["header"] = table_name
@@ -414,13 +414,13 @@ async def add_statistic(session, period, sub, thread_id, reference_ids):
     return tables
 
 
-async def get_trust_stat(session, thread_id, reference_ids, period, network_id, post_count, negative=None):
+async def get_trust_stat(session, thread_id, reference_ids, period, network_id, post_count, negative=None, today_all=datetime.today()):
     payload = {
         "thread_id": thread_id,
         "negative": negative,
         "post_count": post_count,
         "from": get_from_date(period),
-        "to": datetime.today().strftime('%Y-%m-%d %H:%M:%S'),
+        "to": today_all.strftime('%Y-%m-%d %H:%M:%S'),
         "filter": {"network_id": network_id, "referenceFilter": [reference_ids]}
     }
     response = session.post(GET_TRUST_URL, json=payload)
@@ -646,7 +646,7 @@ async def get_attendance_data(session, r):
     }
 
 
-async def get_trust(session, period, sub, thread_id, reference_ids):
+async def get_trust(session, period, sub, thread_id, reference_ids, today_all):
     tables = []
 
     network_ids = [1, 2, 3, 5, 7, 8]
@@ -656,36 +656,36 @@ async def get_trust(session, period, sub, thread_id, reference_ids):
     for s in sub:
         reference_id = s['id']
         if reference_id in reference_ids:
-            table_gather.append(get_trust_for_sub(session, reference_id, network_ids, s['keyword'], period, thread_id))
+            table_gather.append(get_trust_for_sub(session, reference_id, network_ids, s['keyword'], period, thread_id, today_all))
     for trust_state_date in await asyncio.gather(*table_gather):
         if trust_state_date is not None:
             tables.append(trust_state_date)
     return tables
 
 
-async def get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, period):
+async def get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, period, today_all):
     res_net_social_range_gather = []
     res_net_social_range = []
 
     for net_id in network_ids:
         res_net_social_range_gather.append(
-            get_trust_stat(session, thread_id, reference_id, period, [net_id], 3))
+            get_trust_stat(session, thread_id, reference_id, period, [net_id], 3, None, today_all))
 
     for trust_state_date in await asyncio.gather(*res_net_social_range_gather):
         res_net_social_range.extend(trust_state_date)
     return res_net_social_range
 
 
-async def get_trust_for_sub(session, reference_id, network_ids, title, period, thread_id):
+async def get_trust_for_sub(session, reference_id, network_ids, title, period, thread_id, today_all):
     table = None
 
     res_net_social_range, res_net_gs_range, res_net_social_pos_neu, res_net_gs_range_pos_neu, res_net_social_neg, res_net_gs_range_neg = await asyncio.gather(
-        get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, period),
-        get_trust_stat(session, thread_id, reference_id, period, [4], 5),
-        get_trust_stat(session, thread_id, reference_id, period, network_ids, 5, False),
-        get_trust_stat(session, thread_id, reference_id, period, [4], 5, False),
-        get_trust_stat(session, thread_id, reference_id, period, network_ids, 5, True),
-        get_trust_stat(session, thread_id, reference_id, period, [4], 5, True)
+        get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, period, today_all),
+        get_trust_stat(session, thread_id, reference_id, period, [4], 5, None, today_all),
+        get_trust_stat(session, thread_id, reference_id, period, network_ids, 5, False, today_all),
+        get_trust_stat(session, thread_id, reference_id, period, [4], 5, False, today_all),
+        get_trust_stat(session, thread_id, reference_id, period, network_ids, 5, True, today_all),
+        get_trust_stat(session, thread_id, reference_id, period, [4], 5, True, today_all)
     )
 
     if len(res_net_social_range) > 0 or len(res_net_gs_range) > 0 or len(res_net_social_pos_neu) > 0 or len(
@@ -711,21 +711,21 @@ async def get_start_date(session):
     # return await asyncio.gather(get_thread_id(session), subects(session))
 
 
-async def get_posts_statistic(session, period, sub, thread_id, reference_ids):
+async def get_posts_statistic(session, period, sub, thread_id, reference_ids, today_all):
     tables = []
     table_gather = []
     for s in sub:
         chart_name = s['keyword']
         reference_id = s['id']
         if reference_id in reference_ids:
-            table_gather.append(post_static(session, reference_id, thread_id, period, chart_name))
+            table_gather.append(post_static(session, reference_id, thread_id, period, chart_name, today_all))
     for table_data, chart_name in await asyncio.gather(*table_gather):
         if table_data:
             tables.append((chart_name, table_data))
     return tables
 
 
-async def post_static(session, reference_id, thread_id, period, chart_name):
+async def post_static(session, reference_id, thread_id, period, chart_name, today_all):
     limit = 200
     start = 0
     posts = []
@@ -733,24 +733,24 @@ async def post_static(session, reference_id, thread_id, period, chart_name):
         payload = {
             "thread_id": thread_id,
             "from": get_from_date(period),
-            "to": datetime.today().strftime('%Y-%m-%d %H:%M:%S'),
+            "to": today_all.strftime('%Y-%m-%d %H:%M:%S'),
             "limit": limit, "start": start, "sort": {"type": "date", "order": "desc", "name": "dateDown"},
             "filter": {"network_id": [1, 2, 3, 4, 5, 7, 8],
                        "referenceFilter": [reference_id], "repostoption": "whatever"}
         }
         response = session.post(STATISTIC_POST_URL, json=payload)
         posts.extend(response.json().get("posts") or [])
-        if response.json().get("posts") or response.json().get("count") <= len(posts):
+        if not response.json().get("posts") or response.json().get("count") <= len(posts):
             break
         start += limit
     return posts, chart_name
 
 
-async def get_tables(session, period, sub, thread_id, reference_ids):
-    return await asyncio.gather(add_topics(session, period, sub, thread_id, reference_ids),
-                                add_statistic(session, period, sub, thread_id, reference_ids),
-                                get_trust(session, period, sub, thread_id, reference_ids),
-                                get_posts_statistic(session, period, sub, thread_id, reference_ids),
+async def get_tables(session, period, sub, thread_id, reference_ids, today_all):
+    return await asyncio.gather(add_topics(session, period, sub, thread_id, reference_ids, today_all),
+                                add_statistic(session, period, sub, thread_id, reference_ids, today_all),
+                                get_trust(session, period, sub, thread_id, reference_ids, today_all),
+                                get_posts_statistic(session, period, sub, thread_id, reference_ids, today_all),
                                 )
 
 
@@ -791,11 +791,15 @@ def add_hyperlink(paragraph, url, text, color, underline, is_italic=False):
 
 
 def create_report(reference_ids, session, thread_id, period="day"):
-    today_all = datetime.today()
-    today = today_all.strftime('%d-%m-%Y')
     if period == "day":
+        today_all = datetime.today()
+        today = today_all.strftime('%d-%m-%Y')
         today_str = f"на {today}"
+
     else:
+        today_all = datetime.today() - timedelta(days=1)
+        today_all = datetime(today_all.year, today_all.month, today_all.day, 23, 59, 59)
+        today = today_all.strftime('%d-%m-%Y')
         today_str = f"за период с {get_from_date_datetime(period).strftime('%d-%m-%Y')} по {today}"
 
     document = Document()
@@ -815,7 +819,7 @@ def create_report(reference_ids, session, thread_id, period="day"):
     )
 
     topics_tables, statistic_tables, trust_tables, charts_data = loop.run_until_complete(
-        asyncio.wait_for(get_tables(session, period, sub, thread_id, reference_ids), 300)
+        asyncio.wait_for(get_tables(session, period, sub, thread_id, reference_ids, today_all), 300)
     )
     table_number = 1
 
