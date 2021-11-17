@@ -518,7 +518,6 @@ def add_table_trust(document, table_number, header, table_data_range,
         add_top5(table, table_data_neg)
 
 
-
 def add_col_name(table):
     row_cells = table.add_row().cells
     row_cells[1].text = "Ссылка"
@@ -990,9 +989,9 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
     social_list = [0] * len(categories)
     if period == "day":
         for post in statist_chart_data:
-            day = parse(post['created_date']).day
+            hour = parse(post['created_date']).hour
             for i in range(len(categories)):
-                if categories[i] == day:
+                if categories[i] == hour:
                     look_list[i] += int(post['viewed'])
                     if int(post['network_id']) == 4:
                         if post['trust']['trust'] == 1:
