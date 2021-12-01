@@ -43,7 +43,9 @@ PT = Pt(10.5)
 
 app = Flask(__name__)
 
-UTC = 3
+UTC = 0
+
+
 @app.route('/get_report', methods=['GET'])
 def index():
     session = requests.session()
@@ -436,6 +438,7 @@ def add_table_trust_old(document, table_number, header, table_social_data_range,
         f'\nТаблица {table_number} - ТОПы новостей с упоминаниями {header} на {today}',
         style=STYLE
     )
+
     parag_table_1.paragraph_format.space_after = Inches(0)
 
     table = document.add_table(rows=2, cols=2)
@@ -472,7 +475,7 @@ def add_table_trust_old(document, table_number, header, table_social_data_range,
 
 def add_table_trust(document, table_number, header, table_data_range,
                     table_data_pos_neu,
-                    table_data_neg, today, doc_type, first):
+                    table_data_neg, today, doc_type, first, social=False):
     parag_table_1 = document.add_paragraph()
     p_text = f' Таблица {table_number} - ТОПы новостей с упоминаниями '
 
@@ -483,45 +486,64 @@ def add_table_trust(document, table_number, header, table_data_range,
         p_text,
         style=STYLE
     )
+
     add_name(parag_table_1, header)
     parag_table_1.add_run(
-        f' в {doc_type} {today}',
+        f' в {doc_type} {today}.',
         style=STYLE
     )
+
+    p_small_text = "\nФормирование ТОП публикаций осуществляется на основании охватов издания." if\
+        not social else "\nФормирование ТОП публикаций осуществляется на основании суммы реакций."
+
+    parag_table_1.add_run(
+        p_small_text,
+        style=STYLE
+    )
+    parag_table_1.runs[-1].font.size = Pt(8)
+
     parag_table_1.paragraph_format.space_after = Inches(0)
     parag_table_1.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.JUSTIFY
 
     table = document.add_table(rows=0, cols=4)
     table.autofit = False
     table.allow_autofit = False
-    table.columns[0].width = Inches(0.2)
-    table.columns[1].width = Inches(1.5)
-    table.columns[2].width = Inches(0.6)
-    table.columns[3].width = Inches(3.85)
-
+    if not social:
+        table.columns[0].width = Inches(0.2)
+        table.columns[1].width = Inches(1.5)
+        table.columns[2].width = Inches(0.6)
+        table.columns[3].width = Inches(3.85)
+    else:
+        table.columns[0].width = Inches(0.2)
+        table.columns[1].width = Inches(1.2)
+        table.columns[2].width = Inches(1.5)
+        table.columns[3].width = Inches(3.25)
     table.style = 'TableGrid'
-    add_col_name(table)
+    add_col_name(table, social)
 
     change_table_font(table)
 
     if table_data_range:
         row_cells = table.add_row().cells
         header_cell(row_cells, "ТОП-5 публикаций по охватам", "81e5f8")
-        add_top5(table, table_data_range)
+        add_top5(table, table_data_range, social)
     if table_data_pos_neu:
         row_cells = table.add_row().cells
         header_cell(row_cells, "ТОП-5 позитивных и нейтральных новостей", "72f983")
-        add_top5(table, table_data_pos_neu)
+        add_top5(table, table_data_pos_neu, social)
     if table_data_neg:
         row_cells = table.add_row().cells
         header_cell(row_cells, "ТОП-5 негативных и противоречивых новостей", "d24141")
-        add_top5(table, table_data_neg)
+        add_top5(table, table_data_neg, social)
 
 
-def add_col_name(table):
+def add_col_name(table, social):
     row_cells = table.add_row().cells
     row_cells[1].text = "Ссылка"
-    row_cells[2].text = "Охват"
+    if social:
+        row_cells[2].text = "Реакции"
+    else:
+        row_cells[2].text = "Охват"
     row_cells[3].text = "Текст"
 
 
@@ -550,7 +572,7 @@ def add_top5_old(table, table_social_data, table_smi_data):
             pass
 
 
-def add_top5(table, table_data):
+def add_top5(table, table_data, social):
     for i in range(len(table_data)):
         row_cells = table.add_row().cells
         try:
@@ -558,7 +580,61 @@ def add_top5(table, table_data):
             row_cells[2].paragraphs[0].part.style = STYLE
             row_cells[3].paragraphs[0].part.style = STYLE
             row_cells[0].text = str(i + 1)
-            row_cells[2].text = str(table_data[i][0]) + "\n"
+            if social:
+
+                row_cells[2].paragraphs[0].add_run(
+                    "Охват: ",
+                    style=STYLE
+                )
+                row_cells[2].paragraphs[0].runs[-1].bold = True
+
+                row_cells[2].paragraphs[0].add_run(
+                    str(table_data[i][0]) + "\n",
+                    style=STYLE
+                )
+                row_cells[2].paragraphs[0].add_run(
+                    "Просмотры: ",
+                    style=STYLE
+                )
+                row_cells[2].paragraphs[0].runs[-1].bold = True
+
+                row_cells[2].paragraphs[0].add_run(
+                    table_data[i][1]["viewed"] + "\n",
+                    style=STYLE
+                )
+
+                row_cells[2].paragraphs[0].add_run(
+                    "Лайки: ",
+                    style=STYLE
+                )
+                row_cells[2].paragraphs[0].runs[-1].bold = True
+
+                row_cells[2].paragraphs[0].add_run(
+                    table_data[i][1]["likes"] + "\n",
+                    style=STYLE
+                )
+                row_cells[2].paragraphs[0].add_run(
+                    "Комментарии: ",
+                    style=STYLE
+                )
+                row_cells[2].paragraphs[0].runs[-1].bold = True
+
+                row_cells[2].paragraphs[0].add_run(
+                    table_data[i][1]["comments"] + "\n",
+                    style=STYLE
+                )
+                row_cells[2].paragraphs[0].add_run(
+                    "Репосты: ",
+                    style=STYLE
+                )
+                row_cells[2].paragraphs[0].runs[-1].bold = True
+
+                row_cells[2].paragraphs[0].add_run(
+                    table_data[i][1]["reposts"] + "\n",
+                    style=STYLE
+                )
+            else:
+                row_cells[2].text = str(table_data[i][0]) + "\n"
 
             row_cells[3].paragraphs[0].add_run(
                 f"{table_data[i][1]['created_date']}\n",
@@ -642,7 +718,12 @@ async def get_attendance_data(session, r):
         "author": r['author'],
         "text": r["text"],
         "title": r["title"],
-        "url": r["uri"]
+        "url": r["uri"],
+        "likes": r.get("likes", 0),
+        "reposts": r.get("reposts", 0),
+        "comments": r.get("comments", 0),
+        "viewed": r.get("viewed", 0)
+
     }
 
 
@@ -858,6 +939,8 @@ def create_report(reference_ids, session, thread_id, period="day"):
     first = True
     for trust_table_title, table_social_data_range, table_smi_data_range, table_social_data_pos_neu, \
         table_smi_data_pos_neu, table_social_data_neg, table_smi_data_neg in trust_tables:
+        print(table_smi_data_neg)
+
         if table_smi_data_range or table_smi_data_pos_neu or table_smi_data_neg:
             add_table_trust(
                 document,
@@ -882,7 +965,7 @@ def create_report(reference_ids, session, thread_id, period="day"):
                 table_social_data_neg,
                 today_str,
                 "социальных сетях",
-                first
+                first, True
             )
             first = False
             table_number += 1
@@ -1101,6 +1184,7 @@ def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_t
 
 
 if __name__ == "__main__":
+
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=True, host='0.0.0.0', port=port)
 
