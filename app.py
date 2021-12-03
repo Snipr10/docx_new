@@ -522,18 +522,18 @@ def add_table_trust(document, table_number, header, table_data_range,
 
     change_table_font(table)
 
-    table_data_range.sort(reverse=True)
-    table_data_pos_neu.sort(reverse=True)
-    table_data_neg.sort(reverse=True)
     if table_data_range:
+        table_data_range = sorted(table_data_range, key=lambda x: x[0], reverse=True)
         row_cells = table.add_row().cells
         header_cell(row_cells, "ТОП-5 публикаций по охватам", "81e5f8")
         add_top5(table, table_data_range, social)
     if table_data_pos_neu:
+        table_data_pos_neu = sorted(table_data_pos_neu, key=lambda x: x[0], reverse=True)
         row_cells = table.add_row().cells
         header_cell(row_cells, "ТОП-5 позитивных и нейтральных новостей", "72f983")
         add_top5(table, table_data_pos_neu, social)
     if table_data_neg:
+        table_data_neg = sorted(table_data_neg, key=lambda x: x[0], reverse=True)
         row_cells = table.add_row().cells
         header_cell(row_cells, "ТОП-5 негативных и противоречивых новостей", "d24141")
         add_top5(table, table_data_neg, social)
