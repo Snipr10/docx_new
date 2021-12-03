@@ -525,7 +525,10 @@ def add_table_trust(document, table_number, header, table_data_range,
     if table_data_range:
         table_data_range = sorted(table_data_range, key=lambda x: x[0], reverse=True)
         row_cells = table.add_row().cells
-        header_cell(row_cells, "ТОП-5 публикаций по охватам", "81e5f8")
+        if not social:
+            header_cell(row_cells, "ТОП-5 публикаций по охватам", "81e5f8")
+        else:
+            header_cell(row_cells, "ТОП-5 публикаций", "81e5f8")
         add_top5(table, table_data_range, social)
     if table_data_pos_neu:
         table_data_pos_neu = sorted(table_data_pos_neu, key=lambda x: x[0], reverse=True)
@@ -1134,20 +1137,22 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
     update_chart_style(chart)
     chart_number += 1
 
-    add_table_tonal(document, "социальных сетях", chart_number, statistic_chart_title, today, categories_str,
-                    negative_list_social, neutral_list_social, positive_list_social,
-                    x, y, cx, cy)
+    if (sum(neutral_list_social) + sum(negative_list_social) + sum(positive_list_social)) > 0:
+        add_table_tonal(document, "социальных сетях", chart_number, statistic_chart_title, today, categories_str,
+                        negative_list_social, neutral_list_social, positive_list_social,
+                        x, y, cx, cy)
+        chart_number += 1
 
-    chart_number += 1
     if chart_number % 2 == 1 and period == "day":
         parag_table = document.add_paragraph()
         parag_table.add_run(
             f' ',
             style=STYLE
         )
-    add_table_tonal(document, "СМИ", chart_number, statistic_chart_title, today, categories_str,
-                    negative_list_smi, neutral_list_smi, positive_list_smi,
-                    x, y, cx, cy)
+    if (sum(negative_list_smi) + sum(neutral_list_smi) + sum(positive_list_smi)) > 0:
+        add_table_tonal(document, "СМИ", chart_number, statistic_chart_title, today, categories_str,
+                        negative_list_smi, neutral_list_smi, positive_list_smi,
+                        x, y, cx, cy)
 
 
 def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_title, today, categories_str,
