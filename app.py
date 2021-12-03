@@ -20,7 +20,6 @@ from dateutil.relativedelta import relativedelta
 from io import BytesIO
 
 from docx import Document
-from pptx.chart.xmlwriter import ChartXmlWriter
 from pptx.dml.color import RGBColor
 from pptx.oxml.xmlchemy import OxmlElement
 from pptx.util import Pt, Inches
@@ -43,7 +42,7 @@ PT = Pt(10.5)
 
 app = Flask(__name__)
 
-UTC = 0
+UTC = 3
 
 
 @app.route('/get_report', methods=['GET'])
@@ -523,6 +522,9 @@ def add_table_trust(document, table_number, header, table_data_range,
 
     change_table_font(table)
 
+    table_data_range.sort(reverse=True)
+    table_data_pos_neu.sort(reverse=True)
+    table_data_neg.sort(reverse=True)
     if table_data_range:
         row_cells = table.add_row().cells
         header_cell(row_cells, "ТОП-5 публикаций по охватам", "81e5f8")
@@ -582,16 +584,16 @@ def add_top5(table, table_data, social):
             row_cells[0].text = str(i + 1)
             if social:
 
-                row_cells[2].paragraphs[0].add_run(
-                    "Охват: ",
-                    style=STYLE
-                )
-                row_cells[2].paragraphs[0].runs[-1].bold = True
-
-                row_cells[2].paragraphs[0].add_run(
-                    str(table_data[i][0]) + "\n",
-                    style=STYLE
-                )
+                # row_cells[2].paragraphs[0].add_run(
+                #     "Охват: ",
+                #     style=STYLE
+                # )
+                # row_cells[2].paragraphs[0].runs[-1].bold = True
+                #
+                # row_cells[2].paragraphs[0].add_run(
+                #     str(table_data[i][0]) + "\n",
+                #     style=STYLE
+                # )
                 row_cells[2].paragraphs[0].add_run(
                     "Просмотры: ",
                     style=STYLE
@@ -712,8 +714,8 @@ async def get_attendance_data(session, r):
         "owner_id": r["owner_id"],
         "network_id": r["network_id"]
     }
-    response = session.post(GET_ATTENDANCE_URL, json=payload).json()
-    return response['attendance'], {
+    # response = session.post(GET_ATTENDANCE_URL, json=payload).json()
+    return r['supercoefficient'], {
         "created_date": r['created_date'],
         "author": r['author'],
         "text": r["text"],
@@ -1184,7 +1186,6 @@ def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_t
 
 
 if __name__ == "__main__":
-
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=True, host='0.0.0.0', port=port)
 
