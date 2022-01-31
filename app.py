@@ -89,7 +89,7 @@ def update_pagagraphs(paragraphs):
 
 def add_title(document, today):
     add_title_text(document,
-                   f'Отчет по публикациям в Личном Кабинете Мониторинговой системы {today}, созданный на основании публикаций в СМИ и социальных сетях',
+                   f'Отчет по публикациям в Личном Кабинете Мониторинговой системы {today}, созданный на основании публикаций СМИ и социальных сетей',
                    False
                    )
 
@@ -126,7 +126,7 @@ def set_center(cell):
 
 def add_table1(document, table_number, header, records, today, add_table_title):
     parag_table_1 = document.add_paragraph()
-    text = f' Таблица {table_number} - Главные темы СМИ с упоминаниями '
+    text = f' Таблица {table_number} - Главные темы публикаций СМИ с упоминаниями '
     if not add_table_title:
         text = "\n" + text
     parag_table_1.add_run(
@@ -168,7 +168,7 @@ def add_table1(document, table_number, header, records, today, add_table_title):
 def add_table1_old(document, table_number, header, records, today):
     parag_table_1 = document.add_paragraph()
     parag_table_1.add_run(
-        f'\n Таблица {table_number} - Главные темы СМИ на {today}',
+        f'\n Таблица {table_number} - Главные темы публикаций СМИ на {today}',
         style=STYLE
     )
 
@@ -208,7 +208,7 @@ def add_table1_old(document, table_number, header, records, today):
 
 def add_table2(document, table_number, records, table_type, today, add_table_title):
     parag_table = document.add_paragraph()
-    text = f' Таблица {table_number}  - Общая статистика {table_type} по публикациям с упоминаниями субъектов {today}'
+    text = f' Таблица {table_number}  - Общая статистика публикаций {table_type} с упоминаниями субъектов {today}'
     if not add_table_title:
         text = "\n" + text
     parag_table.add_run(
@@ -412,7 +412,7 @@ async def add_statistic(session, period, sub, thread_id, reference_ids, today_al
     if table_data_smi:
         tables.append(("СМИ", table_data_smi))
     if table_data_soc:
-        tables.append(("социальных сетей", table_data_soc))
+        tables.append(("в социальных сетях", table_data_soc))
     return tables
 
 
@@ -434,7 +434,7 @@ def add_table_trust_old(document, table_number, header, table_social_data_range,
                         table_social_data_neg, table_smi_data_neg, today):
     parag_table_1 = document.add_paragraph()
     parag_table_1.add_run(
-        f'\nТаблица {table_number} - ТОПы новостей с упоминаниями {header} на {today}',
+        f'\nТаблица {table_number} - ТОПы публикаций с упоминаниями {header} на {today}',
         style=STYLE
     )
 
@@ -476,7 +476,7 @@ def add_table_trust(document, table_number, header, table_data_range,
                     table_data_pos_neu,
                     table_data_neg, today, doc_type, first, social=False):
     parag_table_1 = document.add_paragraph()
-    p_text = f' Таблица {table_number} - ТОПы новостей с упоминаниями '
+    p_text = f' Таблица {table_number} - ТОПы публикаций с упоминаниями '
 
     if not first:
         p_text = "\n " + p_text
@@ -533,12 +533,12 @@ def add_table_trust(document, table_number, header, table_data_range,
     if table_data_pos_neu:
         table_data_pos_neu = sorted(table_data_pos_neu, key=lambda x: x[0], reverse=True)
         row_cells = table.add_row().cells
-        header_cell(row_cells, "ТОП-5 позитивных и нейтральных новостей", "72f983")
+        header_cell(row_cells, "ТОП-5 позитивных и нейтральных публикаций", "72f983")
         add_top5(table, table_data_pos_neu, social)
     if table_data_neg:
         table_data_neg = sorted(table_data_neg, key=lambda x: x[0], reverse=True)
         row_cells = table.add_row().cells
-        header_cell(row_cells, "ТОП-5 негативных и противоречивых новостей", "d24141")
+        header_cell(row_cells, "ТОП-5 негативных и противоречивых публикаций", "d24141")
         add_top5(table, table_data_neg, social)
 
 
@@ -912,7 +912,7 @@ def create_report(reference_ids, session, thread_id, period="day"):
     add_table_title = True
     for topics_table_title, topics_table_date in topics_tables:
         if add_table_title:
-            add_title_text(document, "Главные темы в СМИ", True)
+            add_title_text(document, "Главные темы публикаций в СМИ", True)
         add_table1(document, table_number, topics_table_title, topics_table_date, today_str, add_table_title)
         table_number += 1
         add_table_title = False
@@ -939,7 +939,7 @@ def create_report(reference_ids, session, thread_id, period="day"):
         add_break = not add_break
     if add_break:
         document.add_page_break()
-    add_title_text(document, "ТОПы публикаций по СМИ и социальным сетям", True)
+    add_title_text(document, "ТОПы публикаций СМИ и социальным сетям", True)
 
     first = True
     for trust_table_title, table_social_data_range, table_smi_data_range, table_social_data_pos_neu, \
@@ -969,7 +969,7 @@ def create_report(reference_ids, session, thread_id, period="day"):
                 table_social_data_pos_neu,
                 table_social_data_neg,
                 today_str,
-                "социальных сетях",
+                "в социальных сетях",
                 first, True
             )
             first = False
@@ -1138,7 +1138,7 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
     chart_number += 1
 
     if (sum(neutral_list_social) + sum(negative_list_social) + sum(positive_list_social)) > 0:
-        add_table_tonal(document, "социальных сетях", chart_number, statistic_chart_title, today, categories_str,
+        add_table_tonal(document, "в социальных сетях", chart_number, statistic_chart_title, today, categories_str,
                         negative_list_social, neutral_list_social, positive_list_social,
                         x, y, cx, cy)
         chart_number += 1
@@ -1161,7 +1161,7 @@ def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_t
                     ):
     parag_table = document.add_paragraph()
     parag_table.add_run(
-        f' График {chart_number} - Динамика распространения публикаций в {chart_title_type_} с упоминанием ',
+        f' График {chart_number} - Динамика распространения публикаций {chart_title_type_} с упоминанием ',
         style=STYLE
     )
     add_name(parag_table, statistic_chart_title)
