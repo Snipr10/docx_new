@@ -476,7 +476,7 @@ def add_table_trust(document, table_number, header, table_data_range,
                     table_data_pos_neu,
                     table_data_neg, today, doc_type, first, social=False):
     parag_table_1 = document.add_paragraph()
-    p_text = f' Таблица {table_number} - ТОПы публикаций с упоминаниями '
+    p_text = f' Таблица {table_number} - ТОПы публикаций {doc_type} с упоминаниями '
 
     if not first:
         p_text = "\n " + p_text
@@ -488,7 +488,7 @@ def add_table_trust(document, table_number, header, table_data_range,
 
     add_name(parag_table_1, header)
     parag_table_1.add_run(
-        f' в {doc_type} {today}.',
+        f' {today}.',
         style=STYLE
     )
 
@@ -939,7 +939,7 @@ def create_report(reference_ids, session, thread_id, period="day"):
         add_break = not add_break
     if add_break:
         document.add_page_break()
-    add_title_text(document, "ТОПы публикаций СМИ и социальным сетям", True)
+    add_title_text(document, "ТОПы публикаций СМИ и социальных сетей", True)
 
     first = True
     for trust_table_title, table_social_data_range, table_smi_data_range, table_social_data_pos_neu, \
@@ -1191,6 +1191,8 @@ def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_t
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(debug=True, host='0.0.0.0', port=port)
+    index()
+
+#     port = int(os.environ.get("PORT", 5000))
+#     app.run(debug=True, host='0.0.0.0', port=port)
 
