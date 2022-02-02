@@ -937,8 +937,9 @@ def create_report(reference_ids, session, thread_id, period="day"):
                            period)
         chart_number += 3
         add_break = not add_break
-    if add_break:
-        document.add_page_break()
+    # if add_break:
+    document.add_page_break()
+
     add_title_text(document, "ТОПы публикаций СМИ и социальных сетей", True)
 
     first = True
