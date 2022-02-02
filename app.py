@@ -302,7 +302,7 @@ async def subects_topic(session, reference_id, thread_id, period, table_name):
         "period": period,
         "type": "smi",
         "start": 0,
-        "limit": 10
+        "limit": 100
     }
     response = session.post(SUBECT_TOPIC_URL, json=payload)
     res = []
