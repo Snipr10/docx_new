@@ -44,6 +44,8 @@ app = Flask(__name__)
 
 UTC = 3
 
+TIMEOUT = 8*60
+
 
 @app.route('/get_report', methods=['GET'])
 def index():
@@ -274,18 +276,18 @@ def login(session, login, password):
         "login": login,
         "password": password
     }
-    response = session.post(LOGIN_URL, json=payload)
+    response = session.post(LOGIN_URL, json=payload, timeout=TIMEOUT)
     if not response.ok:
         raise Exception("can not login")
     return session
 
 
 async def get_thread_id(session):
-    return session.post(THREAD_URL, json={}).json()[0].get("id")
+    return session.post(THREAD_URL, json={}, timeout=TIMEOUT).json()[0].get("id")
 
 
 async def subects(session):
-    response = session.post(SUBECT_URL)
+    response = session.post(SUBECT_URL, timeout=TIMEOUT)
     try:
         res = []
         for r in response.json():
@@ -304,7 +306,7 @@ async def subects_topic(session, reference_id, thread_id, period, table_name):
         "start": 0,
         "limit": 100
     }
-    response = session.post(SUBECT_TOPIC_URL, json=payload)
+    response = session.post(SUBECT_TOPIC_URL, json=payload, timeout=TIMEOUT)
     res = []
     try:
         for r in response.json().get("items", []):
@@ -339,7 +341,7 @@ async def subects_static(session, reference_id, thread_id, period, table_name, t
         "to": today_all.strftime('%Y-%m-%d %H:%M:%S'),
         "filter": {"referenceFilter": [reference_id]}
     }
-    response = session.post(STATISTIC_URL, json=payload)
+    response = session.post(STATISTIC_URL, json=payload, timeout=TIMEOUT)
     res_gs = {}
     res_soc = {}
     keys = ["fb", "vk", "tw", "tg", "ig", "yt"]
@@ -425,7 +427,7 @@ async def get_trust_stat(session, thread_id, reference_ids, period, network_id, 
         "to": today_all.strftime('%Y-%m-%d %H:%M:%S'),
         "filter": {"network_id": network_id, "referenceFilter": [reference_ids]}
     }
-    response = session.post(GET_TRUST_URL, json=payload)
+    response = session.post(GET_TRUST_URL, json=payload, timeout=TIMEOUT)
     return response.json()
 
 
@@ -824,7 +826,7 @@ async def post_static(session, reference_id, thread_id, period, chart_name, toda
             "filter": {"network_id": [1, 2, 3, 4, 5, 7, 8],
                        "referenceFilter": [reference_id], "repostoption": "whatever"}
         }
-        response = session.post(STATISTIC_POST_URL, json=payload)
+        response = session.post(STATISTIC_POST_URL, json=payload, timeout=TIMEOUT)
         posts.extend(response.json().get("posts") or [])
         if not response.json().get("posts") or response.json().get("count") <= len(posts):
             break
