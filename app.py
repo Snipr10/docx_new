@@ -1131,7 +1131,7 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
 
     chart_data.add_series('Сми', update_chart_none(smi_list))
     chart_data.add_series('СоцСети', update_chart_none(social_list))
-    x, y, cx, cy = Inches(-3.5), Inches(0), Inches(6.15), Inches(3.4)
+    x, y, cx, cy = Inches(-3.5), Inches(0), Inches(6.15), Inches(3.3)
 
     chart = document.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data)
     change_color(chart.plots[0].series[0], RGBColor(255, 134, 13))
@@ -1156,12 +1156,12 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
             document.add_page_break()
         chart_number += 1
 
-    if chart_number % 2 == 1 and period == "day":
-        parag_table = document.add_paragraph()
-        parag_table.add_run(
-            f' ',
-            style=STYLE
-        )
+    # if chart_number % 2 == 1 and period == "day":
+    #     parag_table = document.add_paragraph()
+    #     parag_table.add_run(
+    #         f' ',
+    #         style=STYLE
+    #     )
     if (sum(negative_list_smi) + sum(neutral_list_smi) + sum(positive_list_smi)) > 0:
         add_table_tonal(document, "СМИ", chart_number, statistic_chart_title, today, categories_str,
                         negative_list_smi, neutral_list_smi, positive_list_smi,
@@ -1169,6 +1169,7 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
     if chart_number % 2 == 0:
         print(chart_number)
         document.add_page_break()
+
 
 def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_title, today, categories_str,
                     negative_list, neutral_list, positive_list,
