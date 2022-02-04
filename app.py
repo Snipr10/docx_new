@@ -938,9 +938,9 @@ def create_report(reference_ids, session, thread_id, period="day"):
         add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data, today_str, today_all,
                            period)
         chart_number += 3
-        add_break = not add_break
-    # if add_break:
-    document.add_page_break()
+        # add_break = not add_break
+    if chart_number % 2 == 0:
+        document.add_page_break()
 
     add_title_text(document, "ТОПы публикаций СМИ и социальных сетей", True)
 
@@ -1131,19 +1131,29 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
 
     chart_data.add_series('Сми', update_chart_none(smi_list))
     chart_data.add_series('СоцСети', update_chart_none(social_list))
-    x, y, cx, cy = Inches(-3.5), Inches(0), Inches(6.15), Inches(3.5)
+    x, y, cx, cy = Inches(-3.5), Inches(0), Inches(6.15), Inches(3.4)
 
     chart = document.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data)
     change_color(chart.plots[0].series[0], RGBColor(255, 134, 13))
     change_color(chart.plots[0].series[1], RGBColor(87, 57, 132))
 
     update_chart_style(chart)
+    if chart_number % 2 == 0:
+        print(chart_number)
+
+        document.add_page_break()
+
     chart_number += 1
 
     if (sum(neutral_list_social) + sum(negative_list_social) + sum(positive_list_social)) > 0:
         add_table_tonal(document, "в социальных сетях", chart_number, statistic_chart_title, today, categories_str,
                         negative_list_social, neutral_list_social, positive_list_social,
                         x, y, cx, cy)
+
+        if chart_number % 2 == 0:
+            print(chart_number)
+
+            document.add_page_break()
         chart_number += 1
 
     if chart_number % 2 == 1 and period == "day":
@@ -1156,7 +1166,9 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
         add_table_tonal(document, "СМИ", chart_number, statistic_chart_title, today, categories_str,
                         negative_list_smi, neutral_list_smi, positive_list_smi,
                         x, y, cx, cy)
-
+    if chart_number % 2 == 0:
+        print(chart_number)
+        document.add_page_break()
 
 def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_title, today, categories_str,
                     negative_list, neutral_list, positive_list,
