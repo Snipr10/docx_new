@@ -963,6 +963,7 @@ def create_report(reference_ids, session, thread_id, period="day"):
             )
             first = False
             table_number += 1
+            document.add_page_break()
         if table_social_data_range or table_social_data_pos_neu or table_social_data_neg:
             add_table_trust(
                 document,
@@ -977,6 +978,7 @@ def create_report(reference_ids, session, thread_id, period="day"):
             )
             first = False
             table_number += 1
+            document.add_page_break()
 
     return document
 
