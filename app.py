@@ -143,11 +143,17 @@ def add_table1(document, table_number, header, records, today, add_table_title):
     parag_table_1.paragraph_format.space_after = Inches(0)
     parag_table_1.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.JUSTIFY
 
-    table = document.add_table(rows=0, cols=2)
+    table = document.add_table(rows=0, cols=6)
     table.autofit = False
     table.allow_autofit = False
     table.columns[0].width = Inches(0.3)
-    table.columns[1].width = Inches(5.85)
+    table.columns[1].width = Inches(2.45)
+    table.columns[2].width = Inches(1.0)
+    table.columns[3].width = Inches(0.7)
+    table.columns[4].width = Inches(1.0)
+    table.columns[5].width = Inches(0.7)
+
+
 
     table.style = 'TableGrid'
 
@@ -155,14 +161,35 @@ def add_table1(document, table_number, header, records, today, add_table_title):
 
     hdr_cells[0].text = " "
     hdr_cells[1].text = "Тема"
+    hdr_cells[2].text = "Публикаций с упоминанием субъекта"
+    hdr_cells[3].text = "Охват публикаций с упоминанием"
+    hdr_cells[4].text = "Всего публикаций в теме"
+    hdr_cells[5].text = "Охват всех публикаций"
+
+    set_center(hdr_cells[2])
+    set_center(hdr_cells[3])
+    set_center(hdr_cells[4])
+    set_center(hdr_cells[5])
+    set_cell_vertical_alignment(hdr_cells[1])
 
     i = 1
     for cell in records:
         row_cells = table.add_row().cells
-        row_cells[1].text = str(cell)
+        row_cells[5].text = str(cell['total_attendance'])
+        row_cells[4].text = str(cell['total_posts'])
+        row_cells[3].text = str(cell['attendance'])
+        row_cells[2].text = str(cell['postcount'])
+
+        row_cells[1].text = str(cell['title'])
         row_cells[0].text = str(i)
         row_cells[0].alignment = WD_TABLE_ALIGNMENT.RIGHT
         row_cells[0].paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.RIGHT
+
+        set_center(row_cells[2])
+        set_center(row_cells[3])
+        set_center(row_cells[4])
+        set_center(row_cells[5])
+
         i += 1
     change_table_font(table)
 
@@ -310,7 +337,7 @@ async def subects_topic(session, reference_id, thread_id, period, table_name):
     res = []
     try:
         for r in response.json().get("items", []):
-            res.append(r.get("title"))
+            res.append(r)
     except Exception:
         pass
     return res, table_name
@@ -912,10 +939,10 @@ def create_report(reference_ids, session, thread_id, period="day"):
     table_number = 1
 
     add_table_title = True
-    for topics_table_title, topics_table_date in topics_tables:
+    for topics_table_title, topics_table_data in topics_tables:
         if add_table_title:
             add_title_text(document, "Главные темы публикаций в СМИ", True)
-        add_table1(document, table_number, topics_table_title, topics_table_date, today_str, add_table_title)
+        add_table1(document, table_number, topics_table_title, topics_table_data, today_str, add_table_title)
         table_number += 1
         add_table_title = False
 
