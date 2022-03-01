@@ -44,7 +44,7 @@ app = Flask(__name__)
 
 UTC = 3
 
-TIMEOUT = 8*60
+TIMEOUT = 15 * 60
 
 
 @app.route('/get_report', methods=['GET'])
@@ -934,7 +934,7 @@ def create_report(reference_ids, session, thread_id, period="day"):
     )
 
     topics_tables, statistic_tables, trust_tables, charts_data = loop.run_until_complete(
-        asyncio.wait_for(get_tables(session, period, sub, thread_id, reference_ids, today_all), 3000)
+        asyncio.wait_for(get_tables(session, period, sub, thread_id, reference_ids, today_all), 5000)
     )
     table_number = 1
 
