@@ -934,7 +934,7 @@ def create_report(reference_ids, session, thread_id, period="day"):
     )
 
     topics_tables, statistic_tables, trust_tables, charts_data = loop.run_until_complete(
-        asyncio.wait_for(get_tables(session, period, sub, thread_id, reference_ids, today_all), 300)
+        asyncio.wait_for(get_tables(session, period, sub, thread_id, reference_ids, today_all), 3000)
     )
     table_number = 1
 
