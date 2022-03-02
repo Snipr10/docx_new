@@ -2,7 +2,7 @@ import asyncio
 import os
 
 import docx
-import requests
+import httpx as httpx
 import traceback
 
 from dateutil.parser import parse
@@ -49,17 +49,23 @@ TIMEOUT = 15 * 60
 
 @app.route('/get_report', methods=['GET'])
 def index():
-    session = requests.session()
-
-    session = login(session, request.args.get('login'), request.args.get('password'))
     period = request.args.get('period')
     reference_ids_str = request.args.getlist('reference_ids[]')
+
     reference_ids = []
+
     for id_ in reference_ids_str:
         reference_ids.append(int(id_))
+
+    loop = asyncio.new_event_loop()
+
     try:
-        document = create_report(reference_ids, session, int(request.args.get('thread_id')), period)
+        document = loop.run_until_complete(
+            asyncio.wait_for(
+                creater(reference_ids, request.args.get('login'), request.args.get('password'), int(request.args.get('thread_id')), period), 3000)
+        )
         f = BytesIO()
+        # document.save("test.docx")
 
         document.save(f)
         f.seek(0)
@@ -72,6 +78,117 @@ def index():
 
     except Exception as e:
         return "Что-то пошло не так"
+
+
+async def creater(reference_ids, login_user, password, thread_id, period="day"):
+    async with httpx.AsyncClient() as session:
+        await login(session, login_user, password)
+
+        if period == "day":
+            today_all = datetime.today() + timedelta(hours=UTC)
+            today = today_all.strftime('%d-%m-%Y')
+            today_str = f"на {today}"
+
+        else:
+            today_all = datetime.today() + timedelta(hours=UTC) - timedelta(days=1)
+            today_all = datetime(today_all.year, today_all.month, today_all.day, 23, 59, 59)
+            today = today_all.strftime('%d-%m-%Y')
+            today_str = f"за период с {get_from_date_datetime(period).strftime('%d-%m-%Y')} по {today}"
+
+        document = Document()
+
+        obj_styles = document.styles
+        obj_charstyle = obj_styles.add_style(STYLE, WD_STYLE_TYPE.CHARACTER)
+        obj_font = obj_charstyle.font
+        obj_font.size = Pt(10.5)
+        obj_font.name = STYLE
+
+        add_title(document, today_str)
+
+        sub = await get_start_date(session)
+
+        topics_tables, statistic_tables, trust_tables, charts_data = await get_tables(session, period, sub, thread_id,
+                                                                                      reference_ids, today_all)
+
+        table_number = 1
+
+        add_table_title = True
+        for topics_table_title, topics_table_data in topics_tables:
+            if add_table_title:
+                add_title_text(document, "Главные темы публикаций в СМИ", True)
+            add_table1(document, table_number, topics_table_title, topics_table_data, today_str, add_table_title)
+            table_number += 1
+            add_table_title = False
+
+        add_table_title = True
+        for statistic_table_title, statistic_table_date in statistic_tables:
+            if add_table_title:
+                add_title_text(document, "\n Статистика по публикациям с упоминанием субъектов", True)
+            add_table2(document, table_number, statistic_table_date, statistic_table_title, today_str, add_table_title)
+            table_number += 1
+            add_table_title = False
+
+        chart_number = 1
+        add_chart_title = True
+        add_break = False
+        for statistic_chart_title, statist_chart_data in charts_data:
+            if add_chart_title:
+                document.add_page_break()
+                add_title_text(document, "Динамика распространения публикаций", True)
+                add_chart_title = False
+            chart_number = add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data,
+                                              today_str,
+                                              today_all,
+                                              period)
+            chart_number += 1
+
+        if chart_number % 2 == 0:
+            document.add_page_break()
+
+        add_title_text(document, "ТОПы публикаций СМИ и социальных сетей", True)
+
+        first = True
+        for trust_table_title, table_social_data_range, table_smi_data_range, table_social_data_pos_neu, \
+            table_smi_data_pos_neu, table_social_data_neg, table_smi_data_neg in trust_tables:
+
+            if table_smi_data_range or table_smi_data_pos_neu or table_smi_data_neg:
+                try:
+                    add_table_trust(
+                        document,
+                        table_number,
+                        trust_table_title,
+                        table_smi_data_range,
+                        table_smi_data_pos_neu,
+                        table_smi_data_neg,
+                        today_str,
+                        "СМИ",
+                        first
+                    )
+                    first = False
+                    table_number += 1
+                    document.add_page_break()
+                except Exception:
+                    pass
+            if table_social_data_range or table_social_data_pos_neu or table_social_data_neg:
+                try:
+
+                    add_table_trust(
+                        document,
+                        table_number,
+                        trust_table_title,
+                        table_social_data_range,
+                        table_social_data_pos_neu,
+                        table_social_data_neg,
+                        today_str,
+                        "в социальных сетях",
+                        first, True
+                    )
+                    first = False
+                    table_number += 1
+                    document.add_page_break()
+                except Exception:
+                    pass
+        return document
 
 
 def change_table_font(table):
@@ -153,8 +270,6 @@ def add_table1(document, table_number, header, records, today, add_table_title):
     table.columns[4].width = Inches(1.0)
     table.columns[5].width = Inches(0.7)
 
-
-
     table.style = 'TableGrid'
 
     hdr_cells = table.add_row().cells
@@ -191,47 +306,6 @@ def add_table1(document, table_number, header, records, today, add_table_title):
         set_center(row_cells[5])
 
         i += 1
-    change_table_font(table)
-
-
-def add_table1_old(document, table_number, header, records, today):
-    parag_table_1 = document.add_paragraph()
-    parag_table_1.add_run(
-        f'\n Таблица {table_number} - Главные темы публикаций СМИ на {today}',
-        style=STYLE
-    )
-
-    parag_table_1.paragraph_format.space_after = Inches(0)
-
-    table = document.add_table(rows=1, cols=2)
-
-    table.autofit = False
-    table.allow_autofit = False
-    table.columns[0].width = Inches(3.05)
-    table.columns[1].width = Inches(3.1)
-
-    table.style = 'TableGrid'
-
-    hdr_cells = table.rows[0].cells
-
-    hdr_cells[0].text = "                             Субъект"
-    hdr_cells[1].text = "                                Тема"
-
-    first = True
-    last_row = None
-    for cell in records:
-        row_cells = table.add_row().cells
-        row_cells[1].text = str(cell)
-        if first:
-            row_cells[0].text = header
-            set_cell_vertical_alignment(row_cells[0])
-            row_cells[0].alignment = WD_TABLE_ALIGNMENT.CENTER
-            first = False
-            last_row = row_cells[0]
-        else:
-            last_row.merge(row_cells[0])
-
-    table.rows[1].cells[0].text = header
     change_table_font(table)
 
 
@@ -298,13 +372,13 @@ def update_center_right(row_cell):
     row_cell.paragraphs[0].alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.RIGHT
 
 
-def login(session, login, password):
+async def login(session, login, password):
     payload = {
         "login": login,
         "password": password
     }
-    response = session.post(LOGIN_URL, json=payload, timeout=TIMEOUT)
-    if not response.ok:
+    response = await session.post(LOGIN_URL, json=payload, timeout=TIMEOUT)
+    if response.status_code != 200:
         raise Exception("can not login")
     return session
 
@@ -314,7 +388,7 @@ async def get_thread_id(session):
 
 
 async def subects(session):
-    response = session.post(SUBECT_URL, timeout=TIMEOUT)
+    response = await session.post(SUBECT_URL, timeout=TIMEOUT)
     try:
         res = []
         for r in response.json():
@@ -333,7 +407,7 @@ async def subects_topic(session, reference_id, thread_id, period, table_name):
         "start": 0,
         "limit": 100
     }
-    response = session.post(SUBECT_TOPIC_URL, json=payload, timeout=TIMEOUT)
+    response = await session.post(SUBECT_TOPIC_URL, json=payload, timeout=TIMEOUT)
     res = []
     try:
         for r in response.json().get("items", []):
@@ -361,14 +435,13 @@ def get_from_date_datetime(period):
 
 
 async def subects_static(session, reference_id, thread_id, period, table_name, today_all):
-
     payload = {
         "thread_id": thread_id,
         "from": get_from_date(period),
         "to": today_all.strftime('%Y-%m-%d %H:%M:%S'),
         "filter": {"referenceFilter": [reference_id]}
     }
-    response = session.post(STATISTIC_URL, json=payload, timeout=TIMEOUT)
+    response = await session.post(STATISTIC_URL, json=payload, timeout=TIMEOUT)
     res_gs = {}
     res_soc = {}
     keys = ["fb", "vk", "tw", "tg", "ig", "yt"]
@@ -409,43 +482,46 @@ async def subects_static(session, reference_id, thread_id, period, table_name, t
 
 
 async def add_topics(session, period, sub, thread_id, reference_ids, today_all):
-    tables = []
-    table_gather = []
-    for s in sub:
-        table_name = s['keyword']
-        reference_id = s['id']
-        if reference_id in reference_ids:
-            table_gather.append(subects_topic(session, reference_id, thread_id, period, table_name))
-    for table_data, table_name in await asyncio.gather(*table_gather):
-        if table_data:
-            tables.append((table_name, table_data))
-    return tables
+    async with httpx.AsyncClient(cookies=session.cookies) as session:
+        tables = []
+        table_gather = []
+        for s in sub:
+            table_name = s['keyword']
+            reference_id = s['id']
+            if reference_id in reference_ids:
+                table_gather.append(subects_topic(session, reference_id, thread_id, period, table_name))
+        for table_data, table_name in await asyncio.gather(*table_gather):
+            if table_data:
+                tables.append((table_name, table_data))
+        return tables
 
 
 async def add_statistic(session, period, sub, thread_id, reference_ids, today_all):
-    tables = []
-    table_data_smi = []
-    table_data_soc = []
-    table_gather = []
-    for s in sub:
-        reference_id = s['id']
-        if reference_id in reference_ids:
-            table_gather.append(subects_static(session, reference_id, thread_id, period, s['keyword'], today_all))
-    for row_gs, ros_soc, table_name in await asyncio.gather(*table_gather):
-        if row_gs:
-            row_gs["header"] = table_name
-            table_data_smi.append(row_gs)
-        if ros_soc:
-            ros_soc["header"] = table_name
-            table_data_soc.append(ros_soc)
-    if table_data_smi:
-        tables.append(("СМИ", table_data_smi))
-    if table_data_soc:
-        tables.append(("в социальных сетях", table_data_soc))
-    return tables
+    async with httpx.AsyncClient(cookies=session.cookies) as session:
+        tables = []
+        table_data_smi = []
+        table_data_soc = []
+        table_gather = []
+        for s in sub:
+            reference_id = s['id']
+            if reference_id in reference_ids:
+                table_gather.append(subects_static(session, reference_id, thread_id, period, s['keyword'], today_all))
+        for row_gs, ros_soc, table_name in await asyncio.gather(*table_gather):
+            if row_gs:
+                row_gs["header"] = table_name
+                table_data_smi.append(row_gs)
+            if ros_soc:
+                ros_soc["header"] = table_name
+                table_data_soc.append(ros_soc)
+        if table_data_smi:
+            tables.append(("СМИ", table_data_smi))
+        if table_data_soc:
+            tables.append(("в социальных сетях", table_data_soc))
+        return tables
 
 
-async def get_trust_stat(session, thread_id, reference_ids, period, network_id, post_count, negative=None, today_all=datetime.today() + timedelta(hours=UTC)):
+async def get_trust_stat(session, thread_id, reference_ids, period, network_id, post_count, negative=None,
+                         today_all=datetime.today() + timedelta(hours=UTC)):
     payload = {
         "thread_id": thread_id,
         "negative": negative,
@@ -454,51 +530,8 @@ async def get_trust_stat(session, thread_id, reference_ids, period, network_id, 
         "to": today_all.strftime('%Y-%m-%d %H:%M:%S'),
         "filter": {"network_id": network_id, "referenceFilter": [reference_ids]}
     }
-    response = session.post(GET_TRUST_URL, json=payload, timeout=TIMEOUT)
+    response = await session.post(GET_TRUST_URL, json=payload, timeout=TIMEOUT)
     return response.json()
-
-
-def add_table_trust_old(document, table_number, header, table_social_data_range, table_smi_data_range,
-                        table_social_data_pos_neu, table_smi_data_pos_neu,
-                        table_social_data_neg, table_smi_data_neg, today):
-    parag_table_1 = document.add_paragraph()
-    parag_table_1.add_run(
-        f'\nТаблица {table_number} - ТОПы публикаций с упоминаниями {header} на {today}',
-        style=STYLE
-    )
-
-    parag_table_1.paragraph_format.space_after = Inches(0)
-
-    table = document.add_table(rows=2, cols=2)
-    table.autofit = False
-    table.allow_autofit = False
-    table.columns[0].width = Inches(3.05)
-    table.columns[1].width = Inches(3.1)
-
-    table.style = 'TableGrid'
-
-    hdr_cells = table.rows[0].cells
-
-    hdr_cells[0].text = header
-    hdr_cells[0].merge(hdr_cells[1])
-    set_cell_vertical_alignment(hdr_cells[0])
-
-    hdr_cells[0].paragraphs[0].alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER
-
-    hdr_cells = table.rows[1].cells
-    hdr_cells[0].text = "СМИ"
-    hdr_cells[1].text = "Социальные сети"
-
-    add_to5_title(table, "ТОП-5 публикаций по охватам")
-    add_top5_old(table, table_social_data_range, table_smi_data_range)
-
-    add_to5_title(table, "ТОП-5 позитивных и нейтральных новостей")
-    add_top5_old(table, table_social_data_pos_neu, table_smi_data_pos_neu)
-
-    add_to5_title(table, "ТОП-5 негативных и противоречивых новостей")
-    add_top5_old(table, table_social_data_neg, table_smi_data_neg)
-
-    change_table_font(table)
 
 
 def add_table_trust(document, table_number, header, table_data_range,
@@ -521,7 +554,7 @@ def add_table_trust(document, table_number, header, table_data_range,
         style=STYLE
     )
 
-    p_small_text = "\nФормирование ТОП публикаций осуществляется на основании охватов издания." if\
+    p_small_text = "\nФормирование ТОП публикаций осуществляется на основании охватов издания." if \
         not social else "\nФормирование ТОП публикаций осуществляется на основании суммы реакций."
 
     parag_table_1.add_run(
@@ -588,22 +621,6 @@ def header_cell(hdr_cells, header, color):
     hdr_cells[0].merge(hdr_cells[3])
     shading_elm = parse_xml(r'<w:shd {} w:fill="{}"/>'.format(nsdecls('w'), color))
     hdr_cells[0]._tc.get_or_add_tcPr().append(shading_elm)
-
-
-def add_top5_old(table, table_social_data, table_smi_data):
-    for i in range(max(len(table_social_data), len(table_smi_data))):
-        row_cells = table.add_row().cells
-        try:
-            add_hyperlink(row_cells[0].paragraphs[0], table_smi_data[i][1]['url'], get_text(table_smi_data[i], "title"),
-                          None, True)
-            row_cells[0].paragraphs[0].part.style = STYLE
-        except Exception:
-            pass
-        try:
-            add_hyperlink(row_cells[1].paragraphs[0], table_social_data[i][1]['url'],
-                          get_text(table_social_data[i], "text", False), None, True)
-        except Exception:
-            pass
 
 
 def add_top5(table, table_data, social):
@@ -762,20 +779,23 @@ async def get_attendance_data(session, r):
 
 
 async def get_trust(session, period, sub, thread_id, reference_ids, today_all):
-    tables = []
+    async with httpx.AsyncClient(cookies=session.cookies) as session:
 
-    network_ids = [1, 2, 3, 5, 7, 8]
+        tables = []
 
-    table_gather = []
+        network_ids = [1, 2, 3, 5, 7, 8]
 
-    for s in sub:
-        reference_id = s['id']
-        if reference_id in reference_ids:
-            table_gather.append(get_trust_for_sub(session, reference_id, network_ids, s['keyword'], period, thread_id, today_all))
-    for trust_state_date in await asyncio.gather(*table_gather):
-        if trust_state_date is not None:
-            tables.append(trust_state_date)
-    return tables
+        table_gather = []
+
+        for s in sub:
+            reference_id = s['id']
+            if reference_id in reference_ids:
+                table_gather.append(
+                    get_trust_for_sub(session, reference_id, network_ids, s['keyword'], period, thread_id, today_all))
+        for trust_state_date in await asyncio.gather(*table_gather):
+            if trust_state_date is not None:
+                tables.append(trust_state_date)
+        return tables
 
 
 async def get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, period, today_all):
@@ -827,17 +847,18 @@ async def get_start_date(session):
 
 
 async def get_posts_statistic(session, period, sub, thread_id, reference_ids, today_all):
-    tables = []
-    table_gather = []
-    for s in sub:
-        chart_name = s['keyword']
-        reference_id = s['id']
-        if reference_id in reference_ids:
-            table_gather.append(post_static(session, reference_id, thread_id, period, chart_name, today_all))
-    for table_data, chart_name in await asyncio.gather(*table_gather):
-        if table_data:
-            tables.append((chart_name, table_data))
-    return tables
+    async with httpx.AsyncClient(cookies=session.cookies) as session:
+        tables = []
+        table_gather = []
+        for s in sub:
+            chart_name = s['keyword']
+            reference_id = s['id']
+            if reference_id in reference_ids:
+                table_gather.append(post_static(session, reference_id, thread_id, period, chart_name, today_all))
+        for table_data, chart_name in await asyncio.gather(*table_gather):
+            if table_data:
+                tables.append((chart_name, table_data))
+        return tables
 
 
 async def post_static(session, reference_id, thread_id, period, chart_name, today_all):
@@ -853,7 +874,7 @@ async def post_static(session, reference_id, thread_id, period, chart_name, toda
             "filter": {"network_id": [1, 2, 3, 4, 5, 7, 8],
                        "referenceFilter": [reference_id], "repostoption": "whatever"}
         }
-        response = session.post(STATISTIC_POST_URL, json=payload, timeout=TIMEOUT)
+        response = await session.post(STATISTIC_POST_URL, json=payload, timeout=TIMEOUT)
         posts.extend(response.json().get("posts") or [])
         if not response.json().get("posts") or response.json().get("count") <= len(posts):
             break
@@ -903,111 +924,6 @@ def add_hyperlink(paragraph, url, text, color, underline, is_italic=False):
     paragraph.style.font.size = docx.shared.Pt(10.5)
 
     return hyperlink
-
-
-def create_report(reference_ids, session, thread_id, period="day"):
-    if period == "day":
-        today_all = datetime.today() + timedelta(hours=UTC)
-        today = today_all.strftime('%d-%m-%Y')
-        today_str = f"на {today}"
-
-    else:
-        today_all = datetime.today() + timedelta(hours=UTC) - timedelta(days=1)
-        today_all = datetime(today_all.year, today_all.month, today_all.day, 23, 59, 59)
-        today = today_all.strftime('%d-%m-%Y')
-        today_str = f"за период с {get_from_date_datetime(period).strftime('%d-%m-%Y')} по {today}"
-
-    document = Document()
-
-    obj_styles = document.styles
-    obj_charstyle = obj_styles.add_style(STYLE, WD_STYLE_TYPE.CHARACTER)
-    obj_font = obj_charstyle.font
-    obj_font.size = Pt(10.5)
-    obj_font.name = STYLE
-
-    add_title(document, today_str)
-
-    loop = asyncio.new_event_loop()
-    sub = loop.run_until_complete(
-        asyncio.wait_for(
-            get_start_date(session), 300)
-    )
-
-    topics_tables, statistic_tables, trust_tables, charts_data = loop.run_until_complete(
-        asyncio.wait_for(get_tables(session, period, sub, thread_id, reference_ids, today_all), 5000)
-    )
-    table_number = 1
-
-    add_table_title = True
-    for topics_table_title, topics_table_data in topics_tables:
-        if add_table_title:
-            add_title_text(document, "Главные темы публикаций в СМИ", True)
-        add_table1(document, table_number, topics_table_title, topics_table_data, today_str, add_table_title)
-        table_number += 1
-        add_table_title = False
-
-    add_table_title = True
-    for statistic_table_title, statistic_table_date in statistic_tables:
-        if add_table_title:
-            add_title_text(document, "\n Статистика по публикациям с упоминанием субъектов", True)
-        add_table2(document, table_number, statistic_table_date, statistic_table_title, today_str, add_table_title)
-        table_number += 1
-        add_table_title = False
-
-    chart_number = 1
-    add_chart_title = True
-    add_break = False
-    for statistic_chart_title, statist_chart_data in charts_data:
-        if add_chart_title:
-            document.add_page_break()
-            add_title_text(document, "Динамика распространения публикаций", True)
-            add_chart_title = False
-        chart_number = add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data, today_str, today_all,
-                           period)
-        chart_number += 1
-
-    if chart_number % 2 == 0:
-        document.add_page_break()
-
-    add_title_text(document, "ТОПы публикаций СМИ и социальных сетей", True)
-
-    first = True
-    for trust_table_title, table_social_data_range, table_smi_data_range, table_social_data_pos_neu, \
-        table_smi_data_pos_neu, table_social_data_neg, table_smi_data_neg in trust_tables:
-        print(table_smi_data_neg)
-
-        if table_smi_data_range or table_smi_data_pos_neu or table_smi_data_neg:
-            add_table_trust(
-                document,
-                table_number,
-                trust_table_title,
-                table_smi_data_range,
-                table_smi_data_pos_neu,
-                table_smi_data_neg,
-                today_str,
-                "СМИ",
-                first
-            )
-            first = False
-            table_number += 1
-            document.add_page_break()
-        if table_social_data_range or table_social_data_pos_neu or table_social_data_neg:
-            add_table_trust(
-                document,
-                table_number,
-                trust_table_title,
-                table_social_data_range,
-                table_social_data_pos_neu,
-                table_social_data_neg,
-                today_str,
-                "в социальных сетях",
-                first, True
-            )
-            first = False
-            table_number += 1
-            document.add_page_break()
-
-    return document
 
 
 def change_color(series, color):
@@ -1179,8 +1095,6 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
                         negative_list_social, neutral_list_social, positive_list_social,
                         x, y, cx, cy)
 
-
-
     # if chart_number % 2 == 1 and period == "day":
     #     parag_table = document.add_paragraph()
     #     parag_table.add_run(
@@ -1201,6 +1115,7 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
         print(chart_number)
         document.add_page_break()
     return chart_number
+
 
 def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_title, today, categories_str,
                     negative_list, neutral_list, positive_list,
