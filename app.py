@@ -82,7 +82,7 @@ def index():
         return "Что-то пошло не так"
 
 
-@app.route('/get_media_report', methods=['GET'])
+@app.route('/get_publication_summary', methods=['GET'])
 def index_media():
     _from = request.args.get('from')
     _to = request.args.get('to')
