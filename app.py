@@ -26,6 +26,8 @@ from pptx.util import Pt, Inches
 from pptx.chart.data import CategoryChartData
 from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION, XL_TICK_LABEL_POSITION, XL_TICK_MARK
 
+from word_media import docx_media, login
+
 LOGIN_URL = "https://api.glassen-it.com/component/socparser/authorization/login"
 SUBECT_URL = "https://api.glassen-it.com/component/socparser/users/getreferences"
 SUBECT_TOPIC_URL = "https://api.glassen-it.com/component/socparser/stats/getMainTopics"
@@ -67,6 +69,41 @@ def index():
         f = BytesIO()
         # document.save("test.docx")
 
+        document.save(f)
+        f.seek(0)
+
+        return send_file(
+            f,
+            as_attachment=True,
+            attachment_filename='report.docx'
+        )
+
+    except Exception as e:
+        return "Что-то пошло не так"
+
+
+@app.route('/get_media_report', methods=['GET'])
+def index_media():
+    _from = request.args.get('from')
+    _to = request.args.get('to')
+
+    referenceFilter = []
+    for id_ in request.args.getlist('reference_ids[]'):
+        referenceFilter.append(int(id_))
+
+    network_id = []
+    for id_ in request.args.getlist('network_id[]'):
+        network_id.append(int(id_))
+    thread_id = int(request.args.get('thread_id'))
+    if not network_id:
+        network_id = [1, 2, 3, 4, 5, 7, 8]
+    try:
+        loop = asyncio.new_event_loop()
+        document = loop.run_until_complete(
+            asyncio.wait_for(
+                docx_media(request.args.get('login'), request.args.get('password'), thread_id, _from, _to, referenceFilter, network_id), 3000)
+        )
+        f = BytesIO()
         document.save(f)
         f.seek(0)
 
@@ -372,15 +409,6 @@ def update_center_right(row_cell):
     row_cell.paragraphs[0].alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.RIGHT
 
 
-async def login(session, login, password):
-    payload = {
-        "login": login,
-        "password": password
-    }
-    response = await session.post(LOGIN_URL, json=payload, timeout=TIMEOUT)
-    if response.status_code != 200:
-        raise Exception("can not login")
-    return session
 
 
 async def get_thread_id(session):
