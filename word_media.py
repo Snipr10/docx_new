@@ -11,6 +11,7 @@ from docx.shared import Inches, Pt, RGBColor
 from docx import Document
 from docx.oxml.shared import OxmlElement
 from docx.oxml.ns import qn
+
 CLEANR = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
 
 TIMEOUT = 15 * 60
@@ -44,8 +45,11 @@ def add_title_data(title, name, data):
     title_run.font.size = Pt(12)
 
 
-async def subects_names(session, referenceFilter):
-    response = await session.post(SUBECT_URL, timeout=TIMEOUT)
+async def subects_names(session, referenceFilter, user_id):
+    response = await session.post(SUBECT_URL, json={
+        "group_id": user_id,
+        "is_user_id": 1
+    }, timeout=TIMEOUT)
     names = []
     try:
         res = []
@@ -87,30 +91,30 @@ async def get_posts(session, thread_id, _from, _to, network_id, referenceFilter)
     return posts, smi, social
 
 
-async def get_session_result(_login, _password, thread_id, _from, _to, referenceFilter, network_id):
+async def get_session_result(thread_id, _from, _to, referenceFilter, network_id, user_id):
     async with httpx.AsyncClient() as session:
         session = await login(session)
 
         (posts, smi, social), names = await asyncio.gather(
             get_posts(session, thread_id, _from, _to, network_id, referenceFilter),
-            subects_names(session, referenceFilter)
+            subects_names(session, referenceFilter, user_id)
         )
         return posts, smi, social, names
 
 
-def insertHR(paragraph, line = "double"):
+def insertHR(paragraph, line="double"):
     p = paragraph._p  # p is the <w:p> XML element
     pPr = p.get_or_add_pPr()
     pBdr = OxmlElement('w:pBdr')
     pPr.insert_element_before(pBdr,
-        'w:shd', 'w:tabs', 'w:suppressAutoHyphens', 'w:kinsoku', 'w:wordWrap',
-        'w:overflowPunct', 'w:topLinePunct', 'w:autoSpaceDE', 'w:autoSpaceDN',
-        'w:bidi', 'w:adjustRightInd', 'w:snapToGrid', 'w:spacing', 'w:ind',
-        'w:contextualSpacing', 'w:mirrorIndents', 'w:suppressOverlap', 'w:jc',
-        'w:textDirection', 'w:textAlignment', 'w:textboxTightWrap',
-        'w:outlineLvl', 'w:divId', 'w:cnfStyle', 'w:rPr', 'w:sectPr',
-        'w:pPrChange'
-    )
+                              'w:shd', 'w:tabs', 'w:suppressAutoHyphens', 'w:kinsoku', 'w:wordWrap',
+                              'w:overflowPunct', 'w:topLinePunct', 'w:autoSpaceDE', 'w:autoSpaceDN',
+                              'w:bidi', 'w:adjustRightInd', 'w:snapToGrid', 'w:spacing', 'w:ind',
+                              'w:contextualSpacing', 'w:mirrorIndents', 'w:suppressOverlap', 'w:jc',
+                              'w:textDirection', 'w:textAlignment', 'w:textboxTightWrap',
+                              'w:outlineLvl', 'w:divId', 'w:cnfStyle', 'w:rPr', 'w:sectPr',
+                              'w:pPrChange'
+                              )
     bottom = OxmlElement('w:bottom')
     bottom.set(qn('w:val'), line)
     bottom.set(qn('w:sz'), '8')
@@ -133,13 +137,18 @@ def add_hyperlink_into_run(paragraph, run, url):
     hyperlink = docx.oxml.shared.OxmlElement('w:hyperlink')
     hyperlink.set(docx.oxml.shared.qn('r:id'), r_id, )
     hyperlink.append(run._r)
-    paragraph._p.insert(i,hyperlink)
+    paragraph._p.insert(i, hyperlink)
     run.font.color.rgb = docx.shared.RGBColor(0, 0, 255)
 
 
-async def docx_media(login, password, thread_id, _from, _to, referenceFilter, network_id):
-    print("docx_media")
-    posts, smi, social, names = await get_session_result(login, password, thread_id, _from, _to, referenceFilter, network_id)
+def convert_date(date):
+    return datetime.strptime(date, "%Y-%m-%d").date().strftime("%d-%m-%Y")
+
+
+async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id):
+    posts, smi, social, names = await get_session_result(thread_id, convert_date(_from), convert_date(_to),
+                                                         referenceFilter,
+                                                         network_id, user_id)
     document = Document()
     obj_styles = document.styles
     obj_charstyle = obj_styles.add_style(STYLE, WD_STYLE_TYPE.CHARACTER)
@@ -206,4 +215,3 @@ async def docx_media(login, password, thread_id, _from, _to, referenceFilter, ne
         insertHR(hr)
 
     return document
-

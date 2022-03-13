@@ -101,7 +101,8 @@ def index_media():
         loop = asyncio.new_event_loop()
         document = loop.run_until_complete(
             asyncio.wait_for(
-                docx_media(request.args.get('login'), request.args.get('password'), thread_id, _from, _to, referenceFilter, network_id), 3000)
+                docx_media(thread_id, _from, _to,
+                           referenceFilter, network_id, request.args.get('user_id')), 3000)
         )
         f = BytesIO()
         document.save(f)
