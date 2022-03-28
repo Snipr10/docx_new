@@ -1,5 +1,5 @@
 #!/bin/bash
-docker build -t flask-docx .
 
-docker run -d -p 5000:5000 flask-docx
+docker build -t fast-api .
 
+docker run -d --name fast-api-container -p 5000:5000 fast-api
