@@ -1,5 +1,4 @@
 FROM python:3.8-slim-buster
-# set work directory
 COPY . /app
 WORKDIR /app
 RUN apt-get update && \

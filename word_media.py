@@ -103,7 +103,7 @@ async def get_session_result(thread_id, _from, _to, referenceFilter, network_id,
 
 
 def insertHR(paragraph, line="double"):
-    p = paragraph._p  # p is the <w:p> XML element
+    p = paragraph._p
     pPr = p.get_or_add_pPr()
     pBdr = OxmlElement('w:pBdr')
     pPr.insert_element_before(pBdr,
@@ -128,12 +128,10 @@ def add_hyperlink_into_run(paragraph, run, url):
     for i in range(len(runs)):
         if runs[i].text == run.text:
             break
-    # --- This gets access to the document.xml.rels file and gets a new relation id value ---
     part = paragraph.part
     r_id = part.relate_to(
         url, docx.opc.constants.RELATIONSHIP_TYPE.HYPERLINK, is_external=True
     )
-    # --- Create the w:hyperlink tag and add needed values ---
     hyperlink = docx.oxml.shared.OxmlElement('w:hyperlink')
     hyperlink.set(docx.oxml.shared.qn('r:id'), r_id, )
     hyperlink.append(run._r)

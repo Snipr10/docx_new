@@ -41,12 +41,11 @@ KOM_NAME = "Комитет по образованию"
 STYLE = "Times New Roman"
 PT = Pt(10.5)
 
-
 app = FastAPI()
 
 UTC = 3
 
-TIMEOUT = 15 * 60
+TIMEOUT = 7 * 60
 
 
 @app.get('/get_report')
@@ -96,7 +95,7 @@ async def index_media(request: Request):
         network_id = [1, 2, 3, 4, 5, 7, 8]
     try:
         document = await docx_media(thread_id, _from, _to,
-                           referenceFilter, network_id, params.get('user_id'))
+                                    referenceFilter, network_id, params.get('user_id'))
 
         f = BytesIO()
         document.save(f)
@@ -159,7 +158,6 @@ async def creater(reference_ids, login_user, password, thread_id, period="day"):
 
         chart_number = 1
         add_chart_title = True
-        add_break = False
         for statistic_chart_title, statist_chart_data in charts_data:
             if add_chart_title:
                 document.add_page_break()
@@ -237,7 +235,8 @@ def update_pagagraphs(paragraphs):
 
 def add_title(document, today):
     add_title_text(document,
-                   f'Отчет по публикациям в Личном Кабинете Мониторинговой системы {today}, созданный на основании публикаций СМИ и социальных сетей',
+                   f'Отчет по публикациям в Личном Кабинете Мониторинговой системы {today},'
+                   f' созданный на основании публикаций СМИ и социальных сетей',
                    False
                    )
 
@@ -261,7 +260,7 @@ def set_cell_vertical_alignment(cell, align="center"):
         tcValign.set(qn('w:val'), align)
         tcPr.append(tcValign)
         return True
-    except:
+    except Exception:
         traceback.print_exc()
         return False
 
@@ -650,17 +649,6 @@ def add_top5(table, table_data, social):
             row_cells[3].paragraphs[0].part.style = STYLE
             row_cells[0].text = str(i + 1)
             if social:
-
-                # row_cells[2].paragraphs[0].add_run(
-                #     "Охват: ",
-                #     style=STYLE
-                # )
-                # row_cells[2].paragraphs[0].runs[-1].bold = True
-                #
-                # row_cells[2].paragraphs[0].add_run(
-                #     str(table_data[i][0]) + "\n",
-                #     style=STYLE
-                # )
                 row_cells[2].paragraphs[0].add_run(
                     "Просмотры: ",
                     style=STYLE
@@ -752,7 +740,7 @@ def get_text(dict_s, main_text, is_all=True):
 
 
 def remove_html_tags(text, len=200):
-    """Remove html tags from a string"""
+
     add_link = False
     try:
         import re
@@ -776,12 +764,6 @@ async def get_attendance(session, res_net_social):
 
 
 async def get_attendance_data(session, r):
-    payload = {
-        "id": r["id"],
-        "owner_id": r["owner_id"],
-        "network_id": r["network_id"]
-    }
-    # response = session.post(GET_ATTENDANCE_URL, json=payload).json()
     return r['supercoefficient'], {
         "created_date": r['created_date'],
         "author": r['author'],
@@ -861,7 +843,6 @@ async def get_trust_for_sub(session, reference_id, network_ids, title, period, t
 
 async def get_start_date(session):
     return await subects(session)
-    # return await asyncio.gather(get_thread_id(session), subects(session))
 
 
 async def get_posts_statistic(session, period, sub, thread_id, reference_ids, today_all):
@@ -1159,13 +1140,8 @@ def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_t
     chart_data.add_series('Позитивные', positive_list)
     chart = document.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data)
 
-    # change_color_line(chart.plots[0].series[0].format.line, RGBColor(255, 0, 0))
-    # change_color_line(chart.plots[0].series[1].format.line, RGBColor(180, 180, 180))
-    # change_color_line(chart.plots[0].series[2].format.line, RGBColor(0, 255, 0))
-
     change_color(chart.plots[0].series[0], RGBColor(255, 0, 0))
     change_color(chart.plots[0].series[1], RGBColor(180, 180, 180))
     change_color(chart.plots[0].series[2], RGBColor(0, 255, 0))
 
     update_chart_style(chart)
-
