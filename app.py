@@ -1,12 +1,9 @@
 import asyncio
-import os
-
 import docx
 import httpx as httpx
 import traceback
 
 from dateutil.parser import parse
-from flask import Flask, request, send_file
 from datetime import datetime
 from docx.oxml.shared import OxmlElement, qn
 from docx.oxml.ns import nsdecls
@@ -20,11 +17,13 @@ from dateutil.relativedelta import relativedelta
 from io import BytesIO
 
 from docx import Document
+from fastapi import FastAPI, Request
 from pptx.dml.color import RGBColor
 from pptx.oxml.xmlchemy import OxmlElement
 from pptx.util import Pt, Inches
 from pptx.chart.data import CategoryChartData
-from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION, XL_TICK_LABEL_POSITION, XL_TICK_MARK
+from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
+from starlette.responses import StreamingResponse
 
 from word_media import docx_media, login
 
@@ -42,78 +41,70 @@ KOM_NAME = "Комитет по образованию"
 STYLE = "Times New Roman"
 PT = Pt(10.5)
 
-app = Flask(__name__)
+
+app = FastAPI()
 
 UTC = 3
 
 TIMEOUT = 15 * 60
 
 
-@app.route('/get_report', methods=['GET'])
-def index():
-    period = request.args.get('period')
-    reference_ids_str = request.args.getlist('reference_ids[]')
+@app.get('/get_report')
+async def index(request: Request):
+    params = request.query_params
+
+    period = params.get('period')
+    reference_ids_str = params.getlist('reference_ids[]')
 
     reference_ids = []
 
     for id_ in reference_ids_str:
         reference_ids.append(int(id_))
 
-    loop = asyncio.new_event_loop()
-
     try:
-        document = loop.run_until_complete(
-            asyncio.wait_for(
-                creater(reference_ids, request.args.get('login'), request.args.get('password'), int(request.args.get('thread_id')), period), 3000)
-        )
+        document = await creater(reference_ids, params.get('login'), params.get('password'),
+                                 int(params.get('thread_id')), period)
         f = BytesIO()
+
         # document.save("test.docx")
 
         document.save(f)
         f.seek(0)
 
-        return send_file(
-            f,
-            as_attachment=True,
-            attachment_filename='report.docx'
-        )
-
+        response = StreamingResponse(f, media_type="text/docx")
+        response.headers["Content-Disposition"] = "attachment; filename=report.docx"
+        return response
     except Exception as e:
         return "Что-то пошло не так"
 
 
-@app.route('/get_publication_summary', methods=['GET'])
-def index_media():
-    _from = request.args.get('from')
-    _to = request.args.get('to')
+@app.get('/get_report')
+async def index_media(request: Request):
+    params = request.query_params
+    _from = params.get('from')
+    _to = params.get('to')
 
     referenceFilter = []
-    for id_ in request.args.getlist('reference_ids[]'):
+    for id_ in params.getlist('reference_ids[]'):
         referenceFilter.append(int(id_))
 
     network_id = []
-    for id_ in request.args.getlist('network_id[]'):
+    for id_ in params.getlist('network_id[]'):
         network_id.append(int(id_))
-    thread_id = int(request.args.get('thread_id'))
+    thread_id = int(params.get('thread_id'))
     if not network_id:
         network_id = [1, 2, 3, 4, 5, 7, 8]
     try:
-        loop = asyncio.new_event_loop()
-        document = loop.run_until_complete(
-            asyncio.wait_for(
-                docx_media(thread_id, _from, _to,
-                           referenceFilter, network_id, request.args.get('user_id')), 3000)
-        )
+        document = await docx_media(thread_id, _from, _to,
+                           referenceFilter, network_id, params.get('user_id'))
+
         f = BytesIO()
         document.save(f)
         f.seek(0)
 
-        return send_file(
-            f,
-            as_attachment=True,
-            attachment_filename='report.docx'
-        )
-
+        response = StreamingResponse(f, media_type="text/docx")
+        response.headers["Content-Disposition"] = "attachment; filename=report.docx"
+        return response
     except Exception as e:
         return "Что-то пошло не так"
 
@@ -408,8 +399,6 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
 def update_center_right(row_cell):
     set_cell_vertical_alignment(row_cell)
     row_cell.paragraphs[0].alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.RIGHT
-
-
 
 
 async def get_thread_id(session):
@@ -1179,9 +1168,4 @@ def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_t
     change_color(chart.plots[0].series[2], RGBColor(0, 255, 0))
 
     update_chart_style(chart)
-
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(debug=True, host='0.0.0.0', port=port)
 

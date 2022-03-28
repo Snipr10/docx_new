@@ -7,7 +7,6 @@ et-xmlfile==1.1.0
 feedfinder2==0.0.4
 feedparser==6.0.8
 filelock==3.3.2
-Flask==2.0.2
 idna==3.3
 itsdangerous==2.0.1
 jieba3k==0.35.1
@@ -41,3 +40,5 @@ urllib3==1.26.7
 Werkzeug==2.0.2
 XlsxWriter==3.0.2
 httpx==0.22.0
+fastapi==0.74.1
+uvicorn==0.17.5

@@ -1,9 +1,8 @@
 # Docker 
 
-docker build -t flask-docx .
+docker build -t fast-api .
 
-docker run -d -p 5000:5000 flask-docx
-
+docker run -d --name fast-api-container -p 8080:8080 fast-api
 
 # Example
-http://localhost:5000/get_report?period=month&reference_ids=[370,%20369,%201056]
+http://localhost:8080/get_report?period=week&reference_ids[]=370&reference_ids[]=369&reference_ids[]=1056&login=Kom_pvsmi@gov.spb.ru&password=m0fpoemZc3K1&thread_id=4188
