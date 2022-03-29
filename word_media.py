@@ -2,6 +2,7 @@ import asyncio
 import re
 from datetime import datetime
 
+import dateutil
 import docx
 import httpx
 from docx.oxml.shared import OxmlElement
@@ -140,7 +141,7 @@ def add_hyperlink_into_run(paragraph, run, url):
 
 
 def convert_date(date):
-    return datetime.strptime(date, "%Y-%m-%d").date().strftime("%d-%m-%Y")
+    return dateutil.parser.parse(date).date().strftime("%d-%m-%Y")
 
 
 async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id):

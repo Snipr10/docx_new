@@ -50,24 +50,24 @@ UTC = 3
 TIMEOUT = 7 * 60
 
 
-@app.get('/get_report')
+@app.post('/get_report')
 async def index(request: Request):
-    params = request.query_params
+    body_json = await request.json()
 
-    period = params.get('period', None)
-    _from_data = params.get('from', None)
-    _to_data = params.get('to', None)
+    period = body_json.get('period', None)
+    _from_data = body_json.get('from', None)
+    _to_data = body_json.get('to', None)
 
     periods_data = {"period": period, "_from_data": _from_data, "_to_data": _to_data}
-    reference_ids_str = params.getlist('reference_ids[]')
+    reference_ids_str = body_json.get('reference_ids')
 
     reference_ids = []
 
     for id_ in reference_ids_str:
         reference_ids.append(int(id_))
     try:
-        document = await creater(reference_ids, params.get('login'), params.get('password'),
-                                 int(params.get('thread_id')), periods_data)
+        document = await creater(reference_ids, body_json.get('login'), body_json.get('password'),
+                                 int(body_json.get('thread_id')), periods_data)
         f = BytesIO()
 
         # document.save("test.docx")
@@ -83,25 +83,26 @@ async def index(request: Request):
         return "Что-то пошло не так"
 
 
-@app.get('/get_report')
+@app.post('/get_publication_summary')
 async def index_media(request: Request):
-    params = request.query_params
-    _from = params.get('from')
-    _to = params.get('to')
+    body_json = await request.json()
+
+    _from = body_json.get('from')
+    _to = body_json.get('to')
 
     referenceFilter = []
-    for id_ in params.getlist('reference_ids[]'):
+    for id_ in body_json.get('reference_ids'):
         referenceFilter.append(int(id_))
 
     network_id = []
-    for id_ in params.getlist('network_id[]'):
+    for id_ in body_json.get('network_id'):
         network_id.append(int(id_))
-    thread_id = int(params.get('thread_id'))
+    thread_id = int(body_json.get('thread_id'))
     if not network_id:
         network_id = [1, 2, 3, 4, 5, 7, 8]
     try:
         document = await docx_media(thread_id, _from, _to,
-                                    referenceFilter, network_id, params.get('user_id'))
+                                    referenceFilter, network_id, body_json.get('user_id'))
 
         f = BytesIO()
         document.save(f)
@@ -111,6 +112,7 @@ async def index_media(request: Request):
         response.headers["Content-Disposition"] = "attachment; filename=report.docx"
         return response
     except Exception as e:
+        print(e)
         return "Что-то пошло не так"
 
 
@@ -126,6 +128,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
             today = today_all.strftime('%d-%m-%Y')
             today_str = f"на {today}"
             periods_data["_from_data"] = get_from_date(periods_data.get("period"))
+
             periods_data["_to_data"] = today_all.strftime('%Y-%m-%d %H:%M:%S')
 
         else:
@@ -142,7 +145,6 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
                 today_str = f"за период с {dateutil.parser.parse(periods_data['_from_data']).strftime('%d-%m-%Y')} по {dateutil.parser.parse(periods_data['_to_data']).strftime('%d-%m-%Y')}"
 
                 periods_data["_to_data"] = today_all.strftime('%Y-%m-%d %H:%M:%S')
-
         document = Document()
 
         obj_styles = document.styles
