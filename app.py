@@ -157,10 +157,6 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
 
         topics_tables, statistic_tables, trust_tables, charts_data = await get_tables(session, periods_data, sub, thread_id,
                                                                                       reference_ids)
-        print(f"topics_tables = {topics_tables}")
-        print(f"statistic_tables = {statistic_tables}")
-        print(f"trust_tables = {trust_tables}")
-        print(f"charts_data = {charts_data}")
 
         table_number = 1
 
@@ -459,7 +455,6 @@ async def subects_topic(session, reference_id, thread_id, periods_data, table_na
             "start": 0,
             "limit": 100
         }
-    print(f"payload = {payload}")
     response = await session.post(SUBECT_TOPIC_URL, json=payload, timeout=TIMEOUT)
     res = []
     try:
@@ -1120,8 +1115,6 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
 
     if (sum(neutral_list_social) + sum(negative_list_social) + sum(positive_list_social)) > 0:
         if chart_number % 2 == 0:
-            print(chart_number)
-
             document.add_page_break()
 
         chart_number += 1
@@ -1137,8 +1130,6 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
     #     )
     if (sum(negative_list_smi) + sum(neutral_list_smi) + sum(positive_list_smi)) > 0:
         if chart_number % 2 == 0:
-            print(chart_number)
-
             document.add_page_break()
         chart_number += 1
 
@@ -1146,7 +1137,6 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
                         negative_list_smi, neutral_list_smi, positive_list_smi,
                         x, y, cx, cy)
     if chart_number % 2 == 0:
-        print(chart_number)
         document.add_page_break()
     return chart_number
 
