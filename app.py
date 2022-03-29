@@ -1,4 +1,6 @@
 import asyncio
+
+import dateutil
 import docx
 import httpx as httpx
 import traceback
@@ -52,17 +54,20 @@ TIMEOUT = 7 * 60
 async def index(request: Request):
     params = request.query_params
 
-    period = params.get('period')
+    period = params.get('period', None)
+    _from_data = params.get('from', None)
+    _to_data = params.get('to', None)
+
+    periods_data = {"period": period, "_from_data": _from_data, "_to_data": _to_data}
     reference_ids_str = params.getlist('reference_ids[]')
 
     reference_ids = []
 
     for id_ in reference_ids_str:
         reference_ids.append(int(id_))
-
     try:
         document = await creater(reference_ids, params.get('login'), params.get('password'),
-                                 int(params.get('thread_id')), period)
+                                 int(params.get('thread_id')), periods_data)
         f = BytesIO()
 
         # document.save("test.docx")
@@ -74,6 +79,7 @@ async def index(request: Request):
         response.headers["Content-Disposition"] = "attachment; filename=report.docx"
         return response
     except Exception as e:
+        print(e)
         return "Что-то пошло не так"
 
 
@@ -108,20 +114,34 @@ async def index_media(request: Request):
         return "Что-то пошло не так"
 
 
-async def creater(reference_ids, login_user, password, thread_id, period="day"):
+async def creater(reference_ids, login_user, password, thread_id, periods_data):
     async with httpx.AsyncClient() as session:
+
         await login(session, login_user, password)
 
-        if period == "day":
+        today_all = datetime.today() + timedelta(hours=UTC)
+
+        if periods_data.get("period") == "day":
             today_all = datetime.today() + timedelta(hours=UTC)
             today = today_all.strftime('%d-%m-%Y')
             today_str = f"на {today}"
+            periods_data["_from_data"] = get_from_date(periods_data.get("period"))
+            periods_data["_to_data"] = today_all.strftime('%Y-%m-%d %H:%M:%S')
 
         else:
-            today_all = datetime.today() + timedelta(hours=UTC) - timedelta(days=1)
-            today_all = datetime(today_all.year, today_all.month, today_all.day, 23, 59, 59)
-            today = today_all.strftime('%d-%m-%Y')
-            today_str = f"за период с {get_from_date_datetime(period).strftime('%d-%m-%Y')} по {today}"
+            if periods_data.get("period"):
+                today_all = datetime.today() + timedelta(hours=UTC) - timedelta(days=1)
+                today_all = datetime(today_all.year, today_all.month, today_all.day, 23, 59, 59)
+                today = today_all.strftime('%d-%m-%Y')
+                today_str = f"за период с {get_from_date_datetime(periods_data.get('period')).strftime('%d-%m-%Y')} по {today}"
+                periods_data["_from_data"] = get_from_date(periods_data.get("period"))
+                periods_data["_to_data"] = today_all.strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                _to_data = dateutil.parser.parse(periods_data["_to_data"])
+                today_all = datetime(_to_data.year, _to_data.month, today_all.day, 23, 59, 59)
+                today_str = f"за период с {dateutil.parser.parse(periods_data['_from_data']).strftime('%d-%m-%Y')} по {dateutil.parser.parse(periods_data['_to_data']).strftime('%d-%m-%Y')}"
+
+                periods_data["_to_data"] = today_all.strftime('%Y-%m-%d %H:%M:%S')
 
         document = Document()
 
@@ -135,8 +155,12 @@ async def creater(reference_ids, login_user, password, thread_id, period="day"):
 
         sub = await get_start_date(session)
 
-        topics_tables, statistic_tables, trust_tables, charts_data = await get_tables(session, period, sub, thread_id,
-                                                                                      reference_ids, today_all)
+        topics_tables, statistic_tables, trust_tables, charts_data = await get_tables(session, periods_data, sub, thread_id,
+                                                                                      reference_ids)
+        print(f"topics_tables = {topics_tables}")
+        print(f"statistic_tables = {statistic_tables}")
+        print(f"trust_tables = {trust_tables}")
+        print(f"charts_data = {charts_data}")
 
         table_number = 1
 
@@ -166,7 +190,7 @@ async def creater(reference_ids, login_user, password, thread_id, period="day"):
             chart_number = add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data,
                                               today_str,
                                               today_all,
-                                              period)
+                                              periods_data)
             chart_number += 1
 
         if chart_number % 2 == 0:
@@ -415,15 +439,27 @@ async def subects(session):
         return []
 
 
-async def subects_topic(session, reference_id, thread_id, period, table_name):
-    payload = {
-        "thread_id": thread_id,
-        "referenceFilter": [reference_id],
-        "period": period,
-        "type": "smi",
-        "start": 0,
-        "limit": 100
-    }
+async def subects_topic(session, reference_id, thread_id, periods_data, table_name):
+    if periods_data.get("period"):
+        payload = {
+            "thread_id": thread_id,
+            "referenceFilter": [reference_id],
+            "period": periods_data.get("period"),
+            "type": "smi",
+            "start": 0,
+            "limit": 100
+        }
+    else:
+        payload = {
+            "thread_id": thread_id,
+            "referenceFilter": [reference_id],
+            "from": periods_data.get("_from_data"),
+            "to": periods_data.get("_to_data"),
+            "type": "smi",
+            "start": 0,
+            "limit": 100
+        }
+    print(f"payload = {payload}")
     response = await session.post(SUBECT_TOPIC_URL, json=payload, timeout=TIMEOUT)
     res = []
     try:
@@ -451,11 +487,11 @@ def get_from_date_datetime(period):
     return date_from
 
 
-async def subects_static(session, reference_id, thread_id, period, table_name, today_all):
+async def subects_static(session, reference_id, thread_id, periods_data, table_name):
     payload = {
         "thread_id": thread_id,
-        "from": get_from_date(period),
-        "to": today_all.strftime('%Y-%m-%d %H:%M:%S'),
+        "from": periods_data.get("_from_data"),
+        "to": periods_data.get("_to_data"),
         "filter": {"referenceFilter": [reference_id]}
     }
     response = await session.post(STATISTIC_URL, json=payload, timeout=TIMEOUT)
@@ -498,7 +534,7 @@ async def subects_static(session, reference_id, thread_id, period, table_name, t
     return res_gs, res_soc, table_name
 
 
-async def add_topics(session, period, sub, thread_id, reference_ids, today_all):
+async def add_topics(session, periods_data, sub, thread_id, reference_ids):
     async with httpx.AsyncClient(cookies=session.cookies) as session:
         tables = []
         table_gather = []
@@ -506,14 +542,14 @@ async def add_topics(session, period, sub, thread_id, reference_ids, today_all):
             table_name = s['keyword']
             reference_id = s['id']
             if reference_id in reference_ids:
-                table_gather.append(subects_topic(session, reference_id, thread_id, period, table_name))
+                table_gather.append(subects_topic(session, reference_id, thread_id, periods_data, table_name))
         for table_data, table_name in await asyncio.gather(*table_gather):
             if table_data:
                 tables.append((table_name, table_data))
         return tables
 
 
-async def add_statistic(session, period, sub, thread_id, reference_ids, today_all):
+async def add_statistic(session, periods_data, sub, thread_id, reference_ids):
     async with httpx.AsyncClient(cookies=session.cookies) as session:
         tables = []
         table_data_smi = []
@@ -522,7 +558,7 @@ async def add_statistic(session, period, sub, thread_id, reference_ids, today_al
         for s in sub:
             reference_id = s['id']
             if reference_id in reference_ids:
-                table_gather.append(subects_static(session, reference_id, thread_id, period, s['keyword'], today_all))
+                table_gather.append(subects_static(session, reference_id, thread_id, periods_data, s['keyword']))
         for row_gs, ros_soc, table_name in await asyncio.gather(*table_gather):
             if row_gs:
                 row_gs["header"] = table_name
@@ -537,14 +573,13 @@ async def add_statistic(session, period, sub, thread_id, reference_ids, today_al
         return tables
 
 
-async def get_trust_stat(session, thread_id, reference_ids, period, network_id, post_count, negative=None,
-                         today_all=datetime.today() + timedelta(hours=UTC)):
+async def get_trust_stat(session, thread_id, reference_ids, periods_data, network_id, post_count, negative=None):
     payload = {
         "thread_id": thread_id,
         "negative": negative,
         "post_count": post_count,
-        "from": get_from_date(period),
-        "to": today_all.strftime('%Y-%m-%d %H:%M:%S'),
+        "from": periods_data.get("_from_data"),
+        "to": periods_data.get("_to_data"),
         "filter": {"network_id": network_id, "referenceFilter": [reference_ids]}
     }
     response = await session.post(GET_TRUST_URL, json=payload, timeout=TIMEOUT)
@@ -740,7 +775,6 @@ def get_text(dict_s, main_text, is_all=True):
 
 
 def remove_html_tags(text, len=200):
-
     add_link = False
     try:
         import re
@@ -778,7 +812,7 @@ async def get_attendance_data(session, r):
     }
 
 
-async def get_trust(session, period, sub, thread_id, reference_ids, today_all):
+async def get_trust(session, periods_data, sub, thread_id, reference_ids):
     async with httpx.AsyncClient(cookies=session.cookies) as session:
 
         tables = []
@@ -791,36 +825,36 @@ async def get_trust(session, period, sub, thread_id, reference_ids, today_all):
             reference_id = s['id']
             if reference_id in reference_ids:
                 table_gather.append(
-                    get_trust_for_sub(session, reference_id, network_ids, s['keyword'], period, thread_id, today_all))
+                    get_trust_for_sub(session, reference_id, network_ids, s['keyword'], periods_data, thread_id))
         for trust_state_date in await asyncio.gather(*table_gather):
             if trust_state_date is not None:
                 tables.append(trust_state_date)
         return tables
 
 
-async def get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, period, today_all):
+async def get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, periods_data):
     res_net_social_range_gather = []
     res_net_social_range = []
 
     for net_id in network_ids:
         res_net_social_range_gather.append(
-            get_trust_stat(session, thread_id, reference_id, period, [net_id], 3, None, today_all))
+            get_trust_stat(session, thread_id, reference_id, periods_data, [net_id], 3, None))
 
     for trust_state_date in await asyncio.gather(*res_net_social_range_gather):
         res_net_social_range.extend(trust_state_date)
     return res_net_social_range
 
 
-async def get_trust_for_sub(session, reference_id, network_ids, title, period, thread_id, today_all):
+async def get_trust_for_sub(session, reference_id, network_ids, title, periods_data, thread_id):
     table = None
 
     res_net_social_range, res_net_gs_range, res_net_social_pos_neu, res_net_gs_range_pos_neu, res_net_social_neg, res_net_gs_range_neg = await asyncio.gather(
-        get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, period, today_all),
-        get_trust_stat(session, thread_id, reference_id, period, [4], 5, None, today_all),
-        get_trust_stat(session, thread_id, reference_id, period, network_ids, 5, False, today_all),
-        get_trust_stat(session, thread_id, reference_id, period, [4], 5, False, today_all),
-        get_trust_stat(session, thread_id, reference_id, period, network_ids, 5, True, today_all),
-        get_trust_stat(session, thread_id, reference_id, period, [4], 5, True, today_all)
+        get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, periods_data),
+        get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, None),
+        get_trust_stat(session, thread_id, reference_id, periods_data, network_ids, 5, False),
+        get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, False),
+        get_trust_stat(session, thread_id, reference_id, periods_data, network_ids, 5, True),
+        get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, True)
     )
 
     if len(res_net_social_range) > 0 or len(res_net_gs_range) > 0 or len(res_net_social_pos_neu) > 0 or len(
@@ -845,7 +879,7 @@ async def get_start_date(session):
     return await subects(session)
 
 
-async def get_posts_statistic(session, period, sub, thread_id, reference_ids, today_all):
+async def get_posts_statistic(session, periods_data, sub, thread_id, reference_ids):
     async with httpx.AsyncClient(cookies=session.cookies) as session:
         tables = []
         table_gather = []
@@ -853,22 +887,22 @@ async def get_posts_statistic(session, period, sub, thread_id, reference_ids, to
             chart_name = s['keyword']
             reference_id = s['id']
             if reference_id in reference_ids:
-                table_gather.append(post_static(session, reference_id, thread_id, period, chart_name, today_all))
+                table_gather.append(post_static(session, reference_id, thread_id, periods_data, chart_name))
         for table_data, chart_name in await asyncio.gather(*table_gather):
             if table_data:
                 tables.append((chart_name, table_data))
         return tables
 
 
-async def post_static(session, reference_id, thread_id, period, chart_name, today_all):
+async def post_static(session, reference_id, thread_id, periods_data, chart_name):
     limit = 200
     start = 0
     posts = []
     while True:
         payload = {
             "thread_id": thread_id,
-            "from": get_from_date(period),
-            "to": today_all.strftime('%Y-%m-%d %H:%M:%S'),
+            "from": periods_data.get("_from_data"),
+            "to": periods_data.get("_to_data"),
             "limit": limit, "start": start, "sort": {"type": "date", "order": "desc", "name": "dateDown"},
             "filter": {"network_id": [1, 2, 3, 4, 5, 7, 8],
                        "referenceFilter": [reference_id], "repostoption": "whatever"}
@@ -881,11 +915,11 @@ async def post_static(session, reference_id, thread_id, period, chart_name, toda
     return posts, chart_name
 
 
-async def get_tables(session, period, sub, thread_id, reference_ids, today_all):
-    return await asyncio.gather(add_topics(session, period, sub, thread_id, reference_ids, today_all),
-                                add_statistic(session, period, sub, thread_id, reference_ids, today_all),
-                                get_trust(session, period, sub, thread_id, reference_ids, today_all),
-                                get_posts_statistic(session, period, sub, thread_id, reference_ids, today_all),
+async def get_tables(session, periods_data, sub, thread_id, reference_ids):
+    return await asyncio.gather(add_topics(session, periods_data, sub, thread_id, reference_ids),
+                                add_statistic(session, periods_data, sub, thread_id, reference_ids),
+                                get_trust(session, periods_data, sub, thread_id, reference_ids),
+                                get_posts_statistic(session, periods_data, sub, thread_id, reference_ids),
                                 )
 
 
@@ -984,7 +1018,7 @@ def update_chart_style(chart):
     fill_properties.append(scheme_color)
 
 
-def add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data, today, today_all, period):
+def add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data, today, today_all, periods_data):
     parag_table = document.add_paragraph()
     parag_table.add_run(
         f' График {chart_number} - Динамика распространения публикаций с упоминанием ',
@@ -1000,13 +1034,14 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
 
     categories = []
     categories_str = []
-    if period == "day":
+    if periods_data.get("period") == "day":
         for i in range(today_all.hour + 1):
             categories.append(i)
             categories_str.append(f"{i}.00")
     else:
-        start_date = get_from_date_datetime(period).date()
-        while start_date <= today_all.date():
+        # start_date = get_from_date_datetime(periods_data.get("period")).date()
+        start_date = dateutil.parser.parse(periods_data.get("_from_data")).date()
+        while start_date <= dateutil.parser.parse(periods_data.get("_to_data")).date():
             categories.append(start_date)
             categories_str.append(f"{start_date.day}.{start_date.month}")
             start_date += timedelta(days=1)
@@ -1022,7 +1057,7 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
 
     smi_list = [0] * len(categories)
     social_list = [0] * len(categories)
-    if period == "day":
+    if periods_data.get("period") == "day":
         for post in statist_chart_data:
             hour = parse(post['created_date']).hour
             for i in range(len(categories)):
