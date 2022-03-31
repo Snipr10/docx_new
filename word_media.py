@@ -141,7 +141,10 @@ def add_hyperlink_into_run(paragraph, run, url):
 
 
 def convert_date(date):
-    return dateutil.parser.parse(date).date().strftime("%d-%m-%Y")
+    try:
+        return dateutil.parser.parse(date).strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return dateutil.parser.parse(date).date().strftime("%d-%m-%Y")
 
 
 async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id):
