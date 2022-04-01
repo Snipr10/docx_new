@@ -141,10 +141,13 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
                 periods_data["_to_data"] = today_all.strftime('%Y-%m-%d %H:%M:%S')
             else:
                 _to_data = dateutil.parser.parse(periods_data["_to_data"])
-                today_all = datetime(_to_data.year, _to_data.month, today_all.day, 23, 59, 59)
+                today_all = datetime(_to_data.year, _to_data.month, _to_data.day, 23, 59, 59)
                 today_str = f"за период с {dateutil.parser.parse(periods_data['_from_data']).strftime('%d-%m-%Y')} по {dateutil.parser.parse(periods_data['_to_data']).strftime('%d-%m-%Y')}"
 
                 periods_data["_to_data"] = today_all.strftime('%Y-%m-%d %H:%M:%S')
+
+
+        print(periods_data)
         document = Document()
 
         obj_styles = document.styles
