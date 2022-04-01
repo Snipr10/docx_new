@@ -146,8 +146,6 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
 
                 periods_data["_to_data"] = today_all.strftime('%Y-%m-%d %H:%M:%S')
 
-
-        print(periods_data)
         document = Document()
 
         obj_styles = document.styles
