@@ -1,7 +1,8 @@
 import asyncio
 import re
 from datetime import datetime
-
+from datetime import timedelta
+import logging.config
 import dateutil
 import docx
 import httpx
@@ -12,6 +13,8 @@ from docx.shared import Inches, Pt, RGBColor
 from docx import Document
 from docx.oxml.shared import OxmlElement
 from docx.oxml.ns import qn
+
+logger = logging.getLogger('foo-logger')
 
 CLEANR = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
 
@@ -24,17 +27,64 @@ PT = Pt(10.5)
 
 
 async def login(session, login="java_api", password="4yEcwVnjEH7D"):
-    payload = {
-        "login": login,
-        "password": password
-    }
-    response = await session.post(LOGIN_URL, json=payload, timeout=TIMEOUT)
-    if response.status_code != 200:
-        raise Exception("can not login")
+    try:
+        from app import COOKIES
+        if len(COOKIES) == 0 or COOKIES[0].get("date") < datetime.today() - timedelta(days=1):
+            payload = {
+                "login": login,
+                "password": password
+            }
+            response = await session.post(LOGIN_URL, json=payload, timeout=TIMEOUT)
+            if response.status_code != 200:
+                logger.error(f"login {response}")
+
+                raise Exception("can not login")
+            if len(COOKIES)>0:
+                COOKIES[0] = {"date": datetime.now(), "cookies": session.cookies}
+            else:
+                COOKIES.append({"date": datetime.now(), "cookies": session.cookies})
+        else:
+            session.cookies = COOKIES[0].get("cookies")
+    except Exception as e:
+        logger.error(f"login 1 {e}")
+
+        payload = {
+            "login": login,
+            "password": password
+        }
+        response = await session.post(LOGIN_URL, json=payload, timeout=TIMEOUT)
+        if response.status_code != 200:
+            logger.error(f"login {response}")
+            raise Exception("can not login")
     return session
 
 
-# Press the green button in the gutter to run the script.
+async def get_cookies(session):
+    cookies = []
+    for cookie_jar in session.cookies.jar:
+        cookie = {}
+        for name in (
+                "version",
+                "name",
+                "value",
+                "port",
+                "port_specified",
+                "domain",
+                "domain_specified",
+                "domain_initial_dot",
+                "path",
+                "path_specified",
+                "secure",
+                "expires",
+                "discard",
+                "comment",
+                "comment_url",
+        ):
+            attr = getattr(cookie_jar, name)
+            cookie.update({name: attr})
+        cookies.append(cookie)
+    return cookies
+
 
 def add_title_data(title, name, data):
     title_run = title.add_run(name, style=STYLE)
@@ -60,7 +110,8 @@ async def subects_names(session, referenceFilter, user_id):
             if r.get("id") in referenceFilter:
                 names.append(r.get("keyword"))
         return names
-    except Exception:
+    except Exception as e:
+        logger.error(f"subects_names {e}")
         return []
 
 

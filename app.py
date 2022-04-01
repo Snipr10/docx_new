@@ -1,10 +1,10 @@
 import asyncio
-
 import dateutil
 import docx
 import httpx as httpx
 import traceback
 
+import uvicorn
 from dateutil.parser import parse
 from datetime import datetime
 from docx.oxml.shared import OxmlElement, qn
@@ -17,6 +17,7 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 from io import BytesIO
+import logging
 
 from docx import Document
 from fastapi import FastAPI, Request
@@ -28,6 +29,8 @@ from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
 from starlette.responses import StreamingResponse
 
 from word_media import docx_media, login
+from logging.config import dictConfig
+from log_conf import log_config
 
 LOGIN_URL = "https://api.glassen-it.com/component/socparser/authorization/login"
 SUBECT_URL = "https://api.glassen-it.com/component/socparser/users/getreferences"
@@ -38,16 +41,20 @@ STATISTIC_POST_URL = "https://api.glassen-it.com/component/socparser/content/pos
 THREAD_URL = "https://api.glassen-it.com/component/socparser/threads/get"
 
 GET_TRUST_URL = "https://api.glassen-it.com/component/socparser/content/getposttoptrust"
+COOKIES = []
+
 GET_ATTENDANCE_URL = "https://api.glassen-it.com/component/socparser/stats/getpostattendance"
 KOM_NAME = "Комитет по образованию"
 STYLE = "Times New Roman"
 PT = Pt(10.5)
 
+dictConfig(log_config)
 app = FastAPI()
 
 UTC = 3
 
 TIMEOUT = 7 * 60
+logger = logging.getLogger('foo-logger')
 
 
 @app.post('/get_report')
@@ -65,6 +72,9 @@ async def index(request: Request):
 
     for id_ in reference_ids_str:
         reference_ids.append(int(id_))
+
+    logger.info(f"body_json {body_json}")
+
     try:
         document = await creater(reference_ids, body_json.get('login'), body_json.get('password'),
                                  int(body_json.get('thread_id')), periods_data)
@@ -79,7 +89,7 @@ async def index(request: Request):
         response.headers["Content-Disposition"] = "attachment; filename=report.docx"
         return response
     except Exception as e:
-        print(e)
+        logger.error(f"index {e}")
         return "Что-то пошло не так"
 
 
@@ -112,7 +122,7 @@ async def index_media(request: Request):
         response.headers["Content-Disposition"] = "attachment; filename=report.docx"
         return response
     except Exception as e:
-        print(e)
+        logger.error(f"index_media {e}")
         return "Что-то пошло не так"
 
 
@@ -217,8 +227,9 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
                     first = False
                     table_number += 1
                     document.add_page_break()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.error(f"creater 1 {e}")
+
             if table_social_data_range or table_social_data_pos_neu or table_social_data_neg:
                 try:
 
@@ -236,8 +247,9 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
                     first = False
                     table_number += 1
                     document.add_page_break()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.error(f"creater 2 {e}")
+
         return document
 
 
@@ -434,7 +446,8 @@ async def subects(session):
         for r in response.json():
             res.extend(r['items'] or [])
         return res
-    except Exception:
+    except Exception as e:
+        logger.error(f"subects {e}")
         return []
 
 
@@ -463,8 +476,8 @@ async def subects_topic(session, reference_id, thread_id, periods_data, table_na
     try:
         for r in response.json().get("items", []):
             res.append(r)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"subects_topic {e}")
     return res, table_name
 
 
@@ -527,8 +540,8 @@ async def subects_static(session, reference_id, thread_id, periods_data, table_n
         }
         if social.get("total", {}).get("posts", 0) > 0:
             res_soc = social
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"subects_static {e}")
     return res_gs, res_soc, table_name
 
 
@@ -753,8 +766,8 @@ def add_top5(table, table_data, social):
                 add_hyperlink(row_cells[3].paragraphs[0], table_data[i][1]['url'], "далее по ссылке", None, True, True)
 
             set_center(row_cells[2])
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"add_top5 {e}")
 
 
 def add_to5_title(table, title):
@@ -782,7 +795,9 @@ def remove_html_tags(text, len=200):
             update_text = update_text[:len - 19] + "... "
             add_link = True
         return update_text, add_link
-    except Exception:
+    except Exception as e:
+        logger.error(f"remove_html_tags {e}")
+
         return '', add_link
 
 
@@ -1173,3 +1188,6 @@ def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_t
     change_color(chart.plots[0].series[2], RGBColor(0, 255, 0))
 
     update_chart_style(chart)
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
