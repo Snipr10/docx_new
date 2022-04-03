@@ -28,6 +28,7 @@ from pptx.chart.data import CategoryChartData
 from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
 from starlette.responses import StreamingResponse
 
+from resp import post
 from word_media import docx_media, login
 from logging.config import dictConfig
 from log_conf import log_config
@@ -455,12 +456,8 @@ def update_center_right(row_cell):
     row_cell.paragraphs[0].alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.RIGHT
 
 
-async def get_thread_id(session):
-    return session.post(THREAD_URL, json={}, timeout=TIMEOUT).json()[0].get("id")
-
-
 async def subects(session):
-    response = await session.post(SUBECT_URL, timeout=TIMEOUT)
+    response = await post(session, SUBECT_URL, None)
     try:
         res = []
         for r in response.json():
@@ -492,7 +489,8 @@ async def subects_topic(session, reference_id, thread_id, periods_data, table_na
                 "start": 0,
                 "limit": 100
             }
-        response = await session.post(SUBECT_TOPIC_URL, json=payload, timeout=TIMEOUT)
+        response = await post(session, SUBECT_TOPIC_URL, payload)
+
         res = []
         try:
             for r in response.json().get("items", []):
@@ -530,7 +528,8 @@ async def subects_static(session, reference_id, thread_id, periods_data, table_n
             "to": periods_data.get("_to_data"),
             "filter": {"referenceFilter": [reference_id]}
         }
-        response = await session.post(STATISTIC_URL, json=payload, timeout=TIMEOUT)
+        response = await post(session, STATISTIC_URL, payload)
+
         res_gs = {}
         res_soc = {}
         keys = ["fb", "vk", "tw", "tg", "ig", "yt"]
@@ -630,11 +629,13 @@ async def get_trust_stat(session, thread_id, reference_ids, periods_data, networ
             "to": periods_data.get("_to_data"),
             "filter": {"network_id": network_id, "referenceFilter": [reference_ids]}
         }
-        response = await session.post(GET_TRUST_URL, json=payload, timeout=TIMEOUT)
+        response = await post(session, GET_TRUST_URL, payload)
+
         return response.json()
     except Exception as e:
         logger.error(f"get_trust_stat {e}")
         raise e
+
 
 def add_table_trust(document, table_number, header, table_data_range,
                     table_data_pos_neu,
@@ -978,7 +979,8 @@ async def post_static(session, reference_id, thread_id, periods_data, chart_name
             "filter": {"network_id": [1, 2, 3, 4, 5, 7, 8],
                        "referenceFilter": [reference_id], "repostoption": "whatever"}
         }
-        response = await session.post(STATISTIC_POST_URL, json=payload, timeout=TIMEOUT)
+        response = await post(session, STATISTIC_POST_URL, payload)
+
         posts.extend(response.json().get("posts") or [])
         if not response.json().get("posts") or response.json().get("count") <= len(posts):
             break

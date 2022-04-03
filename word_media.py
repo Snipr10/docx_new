@@ -13,6 +13,7 @@ from docx.shared import Inches, Pt, RGBColor
 from docx import Document
 from docx.oxml.shared import OxmlElement
 from docx.oxml.ns import qn
+from resp import post
 
 logger = logging.getLogger('foo-logger')
 
@@ -34,7 +35,8 @@ async def login(session, login="java_api", password="4yEcwVnjEH7D"):
                 "login": login,
                 "password": password
             }
-            response = await session.post(LOGIN_URL, json=payload, timeout=TIMEOUT)
+            response = await post(session, LOGIN_URL, payload)
+
             if response.status_code != 200:
                 logger.error(f"login {response}")
 
@@ -50,7 +52,8 @@ async def login(session, login="java_api", password="4yEcwVnjEH7D"):
             "login": login,
             "password": password
         }
-        response = await session.post(LOGIN_URL, json=payload, timeout=TIMEOUT)
+        response = await post(session, LOGIN_URL, payload)
+
         if response.status_code != 200:
             logger.error(f"login {response}")
             raise Exception("can not login")
@@ -95,10 +98,11 @@ def add_title_data(title, name, data):
 
 
 async def subects_names(session, referenceFilter, user_id):
-    response = await session.post(SUBECT_URL, json={
+    response = await post(session, SUBECT_URL, {
         "group_id": user_id,
         "is_user_id": 1
-    }, timeout=TIMEOUT)
+    })
+
     names = []
     try:
         res = []
@@ -114,6 +118,7 @@ async def subects_names(session, referenceFilter, user_id):
 
 
 async def get_posts(session, thread_id, _from, _to, network_id, referenceFilter):
+
     limit = 200
     start = 0
     posts = []
@@ -126,7 +131,10 @@ async def get_posts(session, thread_id, _from, _to, network_id, referenceFilter)
             "filter": {"network_id": network_id,
                        "referenceFilter": referenceFilter, "repostoption": "whatever"}
         }
-        response = await session.post(STATISTIC_POST_URL, json=payload, timeout=TIMEOUT)
+        from resp import post
+
+        response = await post(session, STATISTIC_POST_URL, payload)
+
         posts.extend(response.json().get("posts") or [])
         if not response.json().get("posts") or response.json().get("count") <= len(posts):
             break
