@@ -167,9 +167,28 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         add_title(document, today_str)
 
         sub = await get_start_date(session)
-
-        topics_tables, statistic_tables, trust_tables, charts_data = await get_tables(session, periods_data, sub, thread_id,
+        try:
+            topics_tables, statistic_tables, trust_tables, charts_data = await get_tables(session, periods_data, sub, thread_id,
                                                                                       reference_ids)
+        except Exception as e:
+            logger.error(f"get_tables {e}")
+            try:
+                topics_tables.cancel()
+            except Exception as e:
+                logger.error(f"topics_tables {e}")
+            try:
+                statistic_tables.cancel()
+            except Exception as e:
+                logger.error(f"statistic_tables {e}")
+            try:
+                trust_tables.cancel()
+            except Exception as e:
+                logger.error(f"trust_tables {e}")
+            try:
+                charts_data.cancel()
+            except Exception as e:
+                logger.error(f"charts_data {e}")
+            raise e
 
         table_number = 1
 
@@ -477,7 +496,7 @@ async def subects_topic(session, reference_id, thread_id, periods_data, table_na
         for r in response.json().get("items", []):
             res.append(r)
     except Exception as e:
-        logger.error(f"subects_topic {e}")
+        logger.error(f"subects_topic {e} {response.text}")
     return res, table_name
 
 
@@ -541,7 +560,7 @@ async def subects_static(session, reference_id, thread_id, periods_data, table_n
         if social.get("total", {}).get("posts", 0) > 0:
             res_soc = social
     except Exception as e:
-        logger.error(f"subects_static {e}")
+        logger.error(f"subects_static {e} {response.text}")
     return res_gs, res_soc, table_name
 
 
