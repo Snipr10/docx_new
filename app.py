@@ -168,8 +168,9 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
 
         sub = await get_start_date(session)
         try:
-            topics_tables, statistic_tables, trust_tables, charts_data = await get_tables(session, periods_data, sub, thread_id,
-                                                                                      reference_ids)
+            topics_tables, statistic_tables, trust_tables, charts_data = await get_tables(session, periods_data, sub,
+                                                                                          thread_id,
+                                                                                          reference_ids)
         except Exception as e:
             logger.error(f"get_tables {e}")
             try:
@@ -566,42 +567,49 @@ async def subects_static(session, reference_id, thread_id, periods_data, table_n
 
 async def add_topics(session, periods_data, sub, thread_id, reference_ids):
     async with httpx.AsyncClient(cookies=session.cookies) as session:
-        tables = []
-        table_gather = []
-        for s in sub:
-            table_name = s['keyword']
-            reference_id = s['id']
-            if reference_id in reference_ids:
-                table_gather.append(subects_topic(session, reference_id, thread_id, periods_data, table_name))
-        for table_data, table_name in await asyncio.gather(*table_gather):
-            if table_data:
-                tables.append((table_name, table_data))
-        return tables
+        try:
+            tables = []
+            table_gather = []
+            for s in sub:
+                table_name = s['keyword']
+                reference_id = s['id']
+                if reference_id in reference_ids:
+                    table_gather.append(subects_topic(session, reference_id, thread_id, periods_data, table_name))
+            for table_data, table_name in await asyncio.gather(*table_gather):
+                if table_data:
+                    tables.append((table_name, table_data))
+            return tables
+        except Exception as e:
+            logger.error(f"add_topics {e}")
+            raise e
 
 
 async def add_statistic(session, periods_data, sub, thread_id, reference_ids):
     async with httpx.AsyncClient(cookies=session.cookies) as session:
-        tables = []
-        table_data_smi = []
-        table_data_soc = []
-        table_gather = []
-        for s in sub:
-            reference_id = s['id']
-            if reference_id in reference_ids:
-                table_gather.append(subects_static(session, reference_id, thread_id, periods_data, s['keyword']))
-        for row_gs, ros_soc, table_name in await asyncio.gather(*table_gather):
-            if row_gs:
-                row_gs["header"] = table_name
-                table_data_smi.append(row_gs)
-            if ros_soc:
-                ros_soc["header"] = table_name
-                table_data_soc.append(ros_soc)
-        if table_data_smi:
-            tables.append(("СМИ", table_data_smi))
-        if table_data_soc:
-            tables.append(("в социальных сетях", table_data_soc))
-        return tables
-
+        try:
+            tables = []
+            table_data_smi = []
+            table_data_soc = []
+            table_gather = []
+            for s in sub:
+                reference_id = s['id']
+                if reference_id in reference_ids:
+                    table_gather.append(subects_static(session, reference_id, thread_id, periods_data, s['keyword']))
+            for row_gs, ros_soc, table_name in await asyncio.gather(*table_gather):
+                if row_gs:
+                    row_gs["header"] = table_name
+                    table_data_smi.append(row_gs)
+                if ros_soc:
+                    ros_soc["header"] = table_name
+                    table_data_soc.append(ros_soc)
+            if table_data_smi:
+                tables.append(("СМИ", table_data_smi))
+            if table_data_soc:
+                tables.append(("в социальных сетях", table_data_soc))
+            return tables
+        except Exception as e:
+            logger.error(f"add_statistic {e}")
+            raise e
 
 async def get_trust_stat(session, thread_id, reference_ids, periods_data, network_id, post_count, negative=None):
     payload = {
@@ -846,23 +854,25 @@ async def get_attendance_data(session, r):
 
 async def get_trust(session, periods_data, sub, thread_id, reference_ids):
     async with httpx.AsyncClient(cookies=session.cookies) as session:
+        try:
+            tables = []
 
-        tables = []
+            network_ids = [1, 2, 3, 5, 7, 8]
 
-        network_ids = [1, 2, 3, 5, 7, 8]
+            table_gather = []
 
-        table_gather = []
-
-        for s in sub:
-            reference_id = s['id']
-            if reference_id in reference_ids:
-                table_gather.append(
-                    get_trust_for_sub(session, reference_id, network_ids, s['keyword'], periods_data, thread_id))
-        for trust_state_date in await asyncio.gather(*table_gather):
-            if trust_state_date is not None:
-                tables.append(trust_state_date)
-        return tables
-
+            for s in sub:
+                reference_id = s['id']
+                if reference_id in reference_ids:
+                    table_gather.append(
+                        get_trust_for_sub(session, reference_id, network_ids, s['keyword'], periods_data, thread_id))
+            for trust_state_date in await asyncio.gather(*table_gather):
+                if trust_state_date is not None:
+                    tables.append(trust_state_date)
+            return tables
+        except Exception as e:
+            logger.error(f"get_trust {e}")
+            raise e
 
 async def get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, periods_data):
     res_net_social_range_gather = []
@@ -913,18 +923,21 @@ async def get_start_date(session):
 
 async def get_posts_statistic(session, periods_data, sub, thread_id, reference_ids):
     async with httpx.AsyncClient(cookies=session.cookies) as session:
-        tables = []
-        table_gather = []
-        for s in sub:
-            chart_name = s['keyword']
-            reference_id = s['id']
-            if reference_id in reference_ids:
-                table_gather.append(post_static(session, reference_id, thread_id, periods_data, chart_name))
-        for table_data, chart_name in await asyncio.gather(*table_gather):
-            if table_data:
-                tables.append((chart_name, table_data))
-        return tables
-
+        try:
+            tables = []
+            table_gather = []
+            for s in sub:
+                chart_name = s['keyword']
+                reference_id = s['id']
+                if reference_id in reference_ids:
+                    table_gather.append(post_static(session, reference_id, thread_id, periods_data, chart_name))
+            for table_data, chart_name in await asyncio.gather(*table_gather):
+                if table_data:
+                    tables.append((chart_name, table_data))
+            return tables
+        except Exception as e:
+            logger.error(f"get_posts_statistic {e}")
+            raise e
 
 async def post_static(session, reference_id, thread_id, periods_data, chart_name):
     limit = 200
@@ -1050,7 +1063,8 @@ def update_chart_style(chart):
     fill_properties.append(scheme_color)
 
 
-def add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data, today, today_all, periods_data):
+def add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data, today, today_all,
+                       periods_data):
     parag_table = document.add_paragraph()
     parag_table.add_run(
         f' График {chart_number} - Динамика распространения публикаций с упоминанием ',
@@ -1207,6 +1221,7 @@ def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_t
     change_color(chart.plots[0].series[2], RGBColor(0, 255, 0))
 
     update_chart_style(chart)
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
