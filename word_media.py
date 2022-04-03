@@ -39,10 +39,8 @@ async def login(session, login="java_api", password="4yEcwVnjEH7D"):
                 logger.error(f"login {response}")
 
                 raise Exception("can not login")
-            if len(COOKIES)>0:
-                COOKIES[0] = {"date": datetime.now(), "cookies": session.cookies}
-            else:
-                COOKIES.append({"date": datetime.now(), "cookies": session.cookies})
+            COOKIES.clear()
+            COOKIES.append({"date": datetime.now(), "cookies": session.cookies})
         else:
             session.cookies = COOKIES[0].get("cookies")
     except Exception as e:
