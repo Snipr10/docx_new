@@ -472,33 +472,37 @@ async def subects(session):
 
 
 async def subects_topic(session, reference_id, thread_id, periods_data, table_name):
-    if periods_data.get("period"):
-        payload = {
-            "thread_id": thread_id,
-            "referenceFilter": [reference_id],
-            "period": periods_data.get("period"),
-            "type": "smi",
-            "start": 0,
-            "limit": 100
-        }
-    else:
-        payload = {
-            "thread_id": thread_id,
-            "referenceFilter": [reference_id],
-            "from": periods_data.get("_from_data"),
-            "to": periods_data.get("_to_data"),
-            "type": "smi",
-            "start": 0,
-            "limit": 100
-        }
-    response = await session.post(SUBECT_TOPIC_URL, json=payload, timeout=TIMEOUT)
-    res = []
     try:
-        for r in response.json().get("items", []):
-            res.append(r)
+        if periods_data.get("period"):
+            payload = {
+                "thread_id": thread_id,
+                "referenceFilter": [reference_id],
+                "period": periods_data.get("period"),
+                "type": "smi",
+                "start": 0,
+                "limit": 100
+            }
+        else:
+            payload = {
+                "thread_id": thread_id,
+                "referenceFilter": [reference_id],
+                "from": periods_data.get("_from_data"),
+                "to": periods_data.get("_to_data"),
+                "type": "smi",
+                "start": 0,
+                "limit": 100
+            }
+        response = await session.post(SUBECT_TOPIC_URL, json=payload, timeout=TIMEOUT)
+        res = []
+        try:
+            for r in response.json().get("items", []):
+                res.append(r)
+        except Exception as e:
+            logger.error(f"subects_topic {e} {response.text}")
+        return res, table_name
     except Exception as e:
-        logger.error(f"subects_topic {e} {response.text}")
-    return res, table_name
+        logger.error(f"subects_topic {e}")
+        raise e
 
 
 def get_from_date(period):
@@ -519,50 +523,54 @@ def get_from_date_datetime(period):
 
 
 async def subects_static(session, reference_id, thread_id, periods_data, table_name):
-    payload = {
-        "thread_id": thread_id,
-        "from": periods_data.get("_from_data"),
-        "to": periods_data.get("_to_data"),
-        "filter": {"referenceFilter": [reference_id]}
-    }
-    response = await session.post(STATISTIC_URL, json=payload, timeout=TIMEOUT)
-    res_gs = {}
-    res_soc = {}
-    keys = ["fb", "vk", "tw", "tg", "ig", "yt"]
     try:
-        res = response.json()
-        if res.get("gs", {}).get("total", {}).get("posts", 0) is not None and res.get("gs", {}).get("total", {}).get(
-                "posts", 0) > 0:
-            res_gs = response.json().get("gs", {})
-        total_posts = 0
-        total_positive = 0
-        total_negative = 0
-        total_netural = 0
-        for k in keys:
-            total_posts += res[k]['total']['posts']
-            total_positive += res[k]['positive']['posts']
-            total_negative += res[k]['negative']['posts']
-            total_netural += res[k]['netural']['posts']
-
-        social = {
-            'total': {
-                'posts': total_posts
-            },
-            'positive': {
-                'posts': total_positive
-            },
-            'negative': {
-                'posts': total_negative
-            },
-            'netural': {
-                'posts': total_netural
-            }
+        payload = {
+            "thread_id": thread_id,
+            "from": periods_data.get("_from_data"),
+            "to": periods_data.get("_to_data"),
+            "filter": {"referenceFilter": [reference_id]}
         }
-        if social.get("total", {}).get("posts", 0) > 0:
-            res_soc = social
+        response = await session.post(STATISTIC_URL, json=payload, timeout=TIMEOUT)
+        res_gs = {}
+        res_soc = {}
+        keys = ["fb", "vk", "tw", "tg", "ig", "yt"]
+        try:
+            res = response.json()
+            if res.get("gs", {}).get("total", {}).get("posts", 0) is not None and res.get("gs", {}).get("total", {}).get(
+                    "posts", 0) > 0:
+                res_gs = response.json().get("gs", {})
+            total_posts = 0
+            total_positive = 0
+            total_negative = 0
+            total_netural = 0
+            for k in keys:
+                total_posts += res[k]['total']['posts']
+                total_positive += res[k]['positive']['posts']
+                total_negative += res[k]['negative']['posts']
+                total_netural += res[k]['netural']['posts']
+
+            social = {
+                'total': {
+                    'posts': total_posts
+                },
+                'positive': {
+                    'posts': total_positive
+                },
+                'negative': {
+                    'posts': total_negative
+                },
+                'netural': {
+                    'posts': total_netural
+                }
+            }
+            if social.get("total", {}).get("posts", 0) > 0:
+                res_soc = social
+        except Exception as e:
+            logger.error(f"subects_static {e} {response.text}")
+        return res_gs, res_soc, table_name
     except Exception as e:
-        logger.error(f"subects_static {e} {response.text}")
-    return res_gs, res_soc, table_name
+        logger.error(f"subects_static {e}")
+        raise e
 
 
 async def add_topics(session, periods_data, sub, thread_id, reference_ids):
@@ -611,18 +619,22 @@ async def add_statistic(session, periods_data, sub, thread_id, reference_ids):
             logger.error(f"add_statistic {e}")
             raise e
 
-async def get_trust_stat(session, thread_id, reference_ids, periods_data, network_id, post_count, negative=None):
-    payload = {
-        "thread_id": thread_id,
-        "negative": negative,
-        "post_count": post_count,
-        "from": periods_data.get("_from_data"),
-        "to": periods_data.get("_to_data"),
-        "filter": {"network_id": network_id, "referenceFilter": [reference_ids]}
-    }
-    response = await session.post(GET_TRUST_URL, json=payload, timeout=TIMEOUT)
-    return response.json()
 
+async def get_trust_stat(session, thread_id, reference_ids, periods_data, network_id, post_count, negative=None):
+    try:
+        payload = {
+            "thread_id": thread_id,
+            "negative": negative,
+            "post_count": post_count,
+            "from": periods_data.get("_from_data"),
+            "to": periods_data.get("_to_data"),
+            "filter": {"network_id": network_id, "referenceFilter": [reference_ids]}
+        }
+        response = await session.post(GET_TRUST_URL, json=payload, timeout=TIMEOUT)
+        return response.json()
+    except Exception as e:
+        logger.error(f"get_trust_stat {e}")
+        raise e
 
 def add_table_trust(document, table_number, header, table_data_range,
                     table_data_pos_neu,
@@ -829,12 +841,16 @@ def remove_html_tags(text, len=200):
 
 
 async def get_attendance(session, res_net_social):
-    res_gather = []
-    for r in res_net_social:
-        res_gather.append(get_attendance_data(session, r))
-    res = await asyncio.gather(*res_gather)
+    try:
+        res_gather = []
+        for r in res_net_social:
+            res_gather.append(get_attendance_data(session, r))
+        res = await asyncio.gather(*res_gather)
 
-    return sorted(res, key=lambda x: x[0], reverse=True)[:5]
+        return sorted(res, key=lambda x: x[0], reverse=True)[:5]
+    except Exception as e:
+        logger.error(f"get_attendance {e}")
+        raise e
 
 
 async def get_attendance_data(session, r):
@@ -874,47 +890,56 @@ async def get_trust(session, periods_data, sub, thread_id, reference_ids):
             logger.error(f"get_trust {e}")
             raise e
 
+
 async def get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, periods_data):
-    res_net_social_range_gather = []
-    res_net_social_range = []
+    try:
+        res_net_social_range_gather = []
+        res_net_social_range = []
 
-    for net_id in network_ids:
-        res_net_social_range_gather.append(
-            get_trust_stat(session, thread_id, reference_id, periods_data, [net_id], 3, None))
+        for net_id in network_ids:
+            res_net_social_range_gather.append(
+                get_trust_stat(session, thread_id, reference_id, periods_data, [net_id], 3, None))
 
-    for trust_state_date in await asyncio.gather(*res_net_social_range_gather):
-        res_net_social_range.extend(trust_state_date)
-    return res_net_social_range
+        for trust_state_date in await asyncio.gather(*res_net_social_range_gather):
+            res_net_social_range.extend(trust_state_date)
+        return res_net_social_range
+    except Exception as e:
+        logger.error(f"get_trust_res_net_social_range {e}")
+        raise e
 
 
 async def get_trust_for_sub(session, reference_id, network_ids, title, periods_data, thread_id):
-    table = None
+    try:
+        table = None
 
-    res_net_social_range, res_net_gs_range, res_net_social_pos_neu, res_net_gs_range_pos_neu, res_net_social_neg, res_net_gs_range_neg = await asyncio.gather(
-        get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, periods_data),
-        get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, None),
-        get_trust_stat(session, thread_id, reference_id, periods_data, network_ids, 5, False),
-        get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, False),
-        get_trust_stat(session, thread_id, reference_id, periods_data, network_ids, 5, True),
-        get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, True)
-    )
-
-    if len(res_net_social_range) > 0 or len(res_net_gs_range) > 0 or len(res_net_social_pos_neu) > 0 or len(
-            res_net_gs_range_pos_neu) > 0 or len(res_net_social_neg) > 0 or len(res_net_gs_range_neg) > 0:
-        table_social_data_range, table_smi_data_range, table_social_data_pos_neu, table_smi_data_pos_neu, table_social_data_neg, table_smi_data_neg = await asyncio.gather(
-            get_attendance(session, res_net_social_range),
-            get_attendance(session, res_net_gs_range),
-            get_attendance(session, res_net_social_pos_neu),
-            get_attendance(session, res_net_gs_range_pos_neu),
-            get_attendance(session, res_net_social_neg),
-            get_attendance(session, res_net_gs_range_neg)
+        res_net_social_range, res_net_gs_range, res_net_social_pos_neu, res_net_gs_range_pos_neu, res_net_social_neg, res_net_gs_range_neg = await asyncio.gather(
+            get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, periods_data),
+            get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, None),
+            get_trust_stat(session, thread_id, reference_id, periods_data, network_ids, 5, False),
+            get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, False),
+            get_trust_stat(session, thread_id, reference_id, periods_data, network_ids, 5, True),
+            get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, True)
         )
 
-        table = (title,
-                 table_social_data_range, table_smi_data_range,
-                 table_social_data_pos_neu, table_smi_data_pos_neu,
-                 table_social_data_neg, table_smi_data_neg)
-    return table
+        if len(res_net_social_range) > 0 or len(res_net_gs_range) > 0 or len(res_net_social_pos_neu) > 0 or len(
+                res_net_gs_range_pos_neu) > 0 or len(res_net_social_neg) > 0 or len(res_net_gs_range_neg) > 0:
+            table_social_data_range, table_smi_data_range, table_social_data_pos_neu, table_smi_data_pos_neu, table_social_data_neg, table_smi_data_neg = await asyncio.gather(
+                get_attendance(session, res_net_social_range),
+                get_attendance(session, res_net_gs_range),
+                get_attendance(session, res_net_social_pos_neu),
+                get_attendance(session, res_net_gs_range_pos_neu),
+                get_attendance(session, res_net_social_neg),
+                get_attendance(session, res_net_gs_range_neg)
+            )
+
+            table = (title,
+                     table_social_data_range, table_smi_data_range,
+                     table_social_data_pos_neu, table_smi_data_pos_neu,
+                     table_social_data_neg, table_smi_data_neg)
+        return table
+    except Exception as e:
+        logger.error(f"get_trust_for_sub {e}")
+        raise e
 
 
 async def get_start_date(session):
@@ -938,6 +963,7 @@ async def get_posts_statistic(session, periods_data, sub, thread_id, reference_i
         except Exception as e:
             logger.error(f"get_posts_statistic {e}")
             raise e
+
 
 async def post_static(session, reference_id, thread_id, periods_data, chart_name):
     limit = 200
