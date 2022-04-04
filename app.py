@@ -76,22 +76,25 @@ async def index(request: Request):
 
     logger.info(f"body_json {body_json}")
 
-    try:
-        document = await creater(reference_ids, body_json.get('login'), body_json.get('password'),
-                                 int(body_json.get('thread_id')), periods_data)
-        f = BytesIO()
+    attempt = 0
+    max = 3
+    while attempt < max:
+        try:
+            document = await creater(reference_ids, body_json.get('login'), body_json.get('password'),
+                                     int(body_json.get('thread_id')), periods_data)
+            f = BytesIO()
 
-        # document.save("test.docx")
+            document.save(f)
+            f.seek(0)
 
-        document.save(f)
-        f.seek(0)
-
-        response = StreamingResponse(f, media_type="text/docx")
-        response.headers["Content-Disposition"] = "attachment; filename=report.docx"
-        return response
-    except Exception as e:
-        logger.error(f"index {e}")
-        return "Что-то пошло не так"
+            response = StreamingResponse(f, media_type="text/docx")
+            response.headers["Content-Disposition"] = "attachment; filename=report.docx"
+            attempt = max
+            return response
+        except Exception as e:
+            attempt += 1
+            logger.error(f"index {e}")
+    return "Что-то пошло не так"
 
 
 @app.post('/get_publication_summary')
