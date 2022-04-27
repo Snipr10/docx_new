@@ -208,6 +208,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         add_table_title = True
         for statistic_table_title, statistic_table_date in statistic_tables:
             if add_table_title:
+                document.add_page_break()
                 add_title_text(document, "\n Статистика по публикациям с упоминанием субъектов", True)
             add_table2(document, table_number, statistic_table_date, statistic_table_title, today_str, add_table_title)
             table_number += 1
