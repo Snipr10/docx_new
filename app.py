@@ -376,7 +376,11 @@ def add_table1(document, table_number, header, records, today, add_table_title):
     set_cell_vertical_alignment(hdr_cells[1])
 
     i = 1
+    max_count = 0
     for cell in records:
+        if max_count >= 20:
+            break
+        max_count += 1
         row_cells = table.add_row().cells
         row_cells[5].text = str(cell['total_attendance'])
         row_cells[4].text = str(cell['total_posts'])
