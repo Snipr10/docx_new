@@ -130,6 +130,11 @@ async def index_media(request: Request):
         return "Что-то пошло не так"
 
 
+def _last_time(day):
+    return datetime(day.year, day.month, day.day, 23, 59, 59).strftime('%Y-%m-%d %H:%M:%S')
+
+
+
 async def creater(reference_ids, login_user, password, thread_id, periods_data):
     async with httpx.AsyncClient() as session:
 
@@ -142,8 +147,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
             today = today_all.strftime('%d-%m-%Y')
             today_str = f"на {today}"
             periods_data["_from_data"] = get_from_date(periods_data.get("period"))
-
-            periods_data["_to_data"] = today_all.strftime('%Y-%m-%d %H:%M:%S')
+            periods_data["_to_data"] = _last_time(today_all)
 
         else:
             if periods_data.get("period"):
