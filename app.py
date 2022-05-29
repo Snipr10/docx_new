@@ -29,7 +29,8 @@ from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
 from starlette.responses import StreamingResponse
 
 from resp import post
-from word_media import docx_media, login
+from tonal_media import docx_tonal
+from word_media import docx_media, login, convert_date
 from logging.config import dictConfig
 from log_conf import log_config
 
@@ -117,6 +118,40 @@ async def index_media(request: Request):
     try:
         document = await docx_media(thread_id, _from, _to,
                                     referenceFilter, network_id, body_json.get('user_id'))
+
+        f = BytesIO()
+        document.save(f)
+        f.seek(0)
+
+        response = StreamingResponse(f, media_type="text/docx")
+        response.headers["Content-Disposition"] = "attachment; filename=report.docx"
+        return response
+    except Exception as e:
+        logger.error(f"index_media {e}")
+        return "Что-то пошло не так"
+
+
+@app.post('/get_report/tonal')
+async def tonal(request: Request):
+    body_json = await request.json()
+
+    _from = body_json.get('from')
+    _to = body_json.get('to')
+
+    _from_parse = convert_date(_from)
+    _to_parse = convert_date(_to)
+
+    thread_ids_str = body_json.get('thread_ids')
+    iogv_name = body_json.get('iogv_name')
+    types = body_json.get('type')
+
+    thread_ids = []
+
+    for id_ in thread_ids_str:
+        thread_ids.append(int(id_))
+
+    try:
+        document = await docx_tonal(thread_ids, _from_parse, _to_parse, iogv_name, types)
 
         f = BytesIO()
         document.save(f)
@@ -335,6 +370,18 @@ def set_center(cell):
     cell.paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.CENTER
 
 
+def set_right(cell):
+    set_cell_vertical_alignment(cell)
+    cell.alignment = WD_TABLE_ALIGNMENT.RIGHT
+    cell.paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.RIGHT
+
+
+def set_left(cell):
+    set_cell_vertical_alignment(cell)
+    cell.alignment = WD_TABLE_ALIGNMENT.LEFT
+    cell.paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.LEFT
+
+
 def add_table1(document, table_number, header, records, today, add_table_title):
     parag_table_1 = document.add_paragraph()
     text = f' Таблица {table_number} - Главные темы публикаций СМИ с упоминаниями '
@@ -547,7 +594,8 @@ async def subects_static(session, reference_id, thread_id, periods_data, table_n
         keys = ["fb", "vk", "tw", "tg", "ig", "yt"]
         try:
             res = response.json()
-            if res.get("gs", {}).get("total", {}).get("posts", 0) is not None and res.get("gs", {}).get("total", {}).get(
+            if res.get("gs", {}).get("total", {}).get("posts", 0) is not None and res.get("gs", {}).get("total",
+                                                                                                        {}).get(
                     "posts", 0) > 0:
                 res_gs = response.json().get("gs", {})
             total_posts = 0
