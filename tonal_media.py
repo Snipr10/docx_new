@@ -62,7 +62,12 @@ async def docx_tonal(thread_ids, _from, _to, iogv_name, types):
                    )
     table_number = 1
     flot_number = 1
+    i = 0
     for thread_name, week_trust, owners_top_smi, owners_top_social in response_data:
+        i +=1
+        if i > 1:
+            document.add_page_break()
+
         parag_title = document.add_paragraph()
 
         title_run = parag_title.add_run(name, style=STYLE)
@@ -77,13 +82,12 @@ async def docx_tonal(thread_ids, _from, _to, iogv_name, types):
         if "social" in types:
             table_number += 1
             add_table_owners(document, table_number, "Топ Источников Соц. Сети ", owners_top_social, add_table_title)
+        if ("smi" in types and len(owners_top_smi['items']) > 0) or ("social" in types and len(owners_top_social['items']) > 0):
+            document.add_page_break()
         if "smi" in types:
             flot_number = add_table_tonal(document, "СМИ", flot_number, owners_top_smi)
         if "social" in types:
             flot_number = add_table_tonal(document, "Соц. Сети", flot_number, owners_top_social)
-
-        document.add_page_break()
-
     return document
 
 
@@ -94,10 +98,7 @@ async def get_session_tonal_result(thread_id, _from, _to, types):
             await get_thread_name(session, thread_id)
         except Exception as e:
             print(e)
-        await get_stats_trust(session, thread_id, _from, _to, types),
-        await get_stats_trust(session, thread_id, _from, _to, types, "social"),
-        await get_owners_top(session, thread_id, _from, _to, types),
-        await get_owners_top(session, thread_id, _from, _to, types, "social"),
+
         thread_name, week_trust_smi, week_trust_social, owners_top_smi, owners_top_social = await asyncio.gather(
             get_thread_name(session, thread_id),
             get_stats_trust(session, thread_id, _from, _to, types),
@@ -406,6 +407,7 @@ def add_table_owners(document, table_number, header, records, add_table_title, t
 
 def add_table_tonal(document, type, chart_number, data_soc):
     categories_data = {}
+    categories_data_comments = {}
     data = []
     if len(data_soc['items']) <= 0:
         return chart_number
@@ -425,9 +427,12 @@ def add_table_tonal(document, type, chart_number, data_soc):
             categories = list(range(first_date, 24)) + list(range(0, last_date + 1))
         for c in categories:
             categories_data[c] = 0
+            categories_data_comments[c] = 0
         for d in data:
             hour = dateutil.parser.parse(d['item_date']).hour
             categories_data[hour] += int(d["post_count"])
+            categories_data_comments[hour] += int(d["comments_count"])
+
         categories_list = [f"{x}:00" for x in categories]
 
     else:
@@ -443,12 +448,12 @@ def add_table_tonal(document, type, chart_number, data_soc):
                 break
         for c in categories:
             categories_data[c] = 0
+            categories_data_comments[c] = 0
         for d in data:
             hour = dateutil.parser.parse(d['item_date'])
             categories_data[hour] += int(d["post_count"])
+            categories_data_comments[hour] += int(d["comments_count"])
         categories_list = [f"{x.day}.{x.month}" for x in categories]
-
-    document.add_page_break()
 
     from app import change_color, update_chart_style
     parag_table = document.add_paragraph()
@@ -462,21 +467,19 @@ def add_table_tonal(document, type, chart_number, data_soc):
     chart_data = CategoryChartData()
     chart_data.categories = categories_list
 
-    r = []
-    for i in list(categories_data.values()):
-        r.append(str(i))
 
-    chart_data.add_series('Сми', r)
+
+    chart_data.add_series('Публикации', list(categories_data.values()))
+    chart_data.add_series('Комментарии', list(categories_data_comments.values()))
+
     x, y, cx, cy = Inches(-3.5), Inches(0), Inches(6.15), Inches(3.3)
 
     chart = document.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data)
     change_color(chart.plots[0].series[0], RGBColor(114, 159, 207))
-    for point in chart.plots[0].series[0].points:
-        fill = point.format.fill
-        fill.solid()
-        fill.fore_color.rgb = RGBColor(114, 159, 207)
-    chart.has_legend = False
+    change_color(chart.plots[0].series[1], RGBColor(87, 57, 132))
+
+
 
     chart_number += 1
-    # update_chart_style(chart)
+    update_chart_style(chart)
     return chart_number
