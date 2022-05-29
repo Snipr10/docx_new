@@ -421,7 +421,7 @@ def add_table_tonal(document, type, chart_number, data_soc):
     if len(data[0]['item_date']) > 10:
         first_date = dateutil.parser.parse(data[0]['item_date']).hour
         last_date = dateutil.parser.parse(data[-1]['item_date']).hour
-        if first_date <= last_date:
+        if first_date < last_date:
             categories = list(range(first_date, last_date + 1))
         else:
             categories = list(range(first_date, 24)) + list(range(0, last_date + 1))
