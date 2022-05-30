@@ -38,9 +38,9 @@ STYLE = "Times New Roman"
 PT = Pt(10.5)
 
 
-async def docx_tonal(thread_ids, _from, _to, iogv_name, types):
+async def docx_tonal(thread_ids, _from, _to, iogv_name, types, smi_type):
     from app import add_title_text
-    response_data = [await get_session_tonal_result(thread_id, _from, _to, types) for thread_id in thread_ids]
+    response_data = [await get_session_tonal_result(thread_id, _from, _to, types, smi_type) for thread_id in thread_ids]
     name = []
     for thread_, _, _, _ in response_data:
         name.append(thread_['name'])
@@ -91,7 +91,7 @@ async def docx_tonal(thread_ids, _from, _to, iogv_name, types):
     return document
 
 
-async def get_session_tonal_result(thread_id, _from, _to, types):
+async def get_session_tonal_result(thread_id, _from, _to, types, smi_type):
     async with httpx.AsyncClient() as session:
         session = await login(session)
         try:
@@ -101,10 +101,10 @@ async def get_session_tonal_result(thread_id, _from, _to, types):
 
         thread_name, week_trust_smi, week_trust_social, owners_top_smi, owners_top_social = await asyncio.gather(
             get_thread_name(session, thread_id),
-            get_stats_trust(session, thread_id, _from, _to, types),
-            get_stats_trust(session, thread_id, _from, _to, types, "social"),
-            get_owners_top(session, thread_id, _from, _to, types),
-            get_owners_top(session, thread_id, _from, _to, types, "social"),
+            get_stats_trust(session, thread_id, _from, _to, types, smi_type),
+            get_stats_trust(session, thread_id, _from, _to, types, smi_type, "social"),
+            get_owners_top(session, thread_id, _from, _to, types, smi_type),
+            get_owners_top(session, thread_id, _from, _to, types, smi_type, "social"),
 
         )
         week_trust = {}
@@ -187,28 +187,29 @@ async def get_thread_name(session, thread_id):
     return response_json
 
 
-async def get_owners_top(session, thread_id, _from, _to, types, type="smi"):
+async def get_owners_top(session, thread_id, _from, _to, types, smi_type, type="smi"):
     if type not in types:
         return []
     response = await post(session, OWNERS_TOP, {
         "thread_id": thread_id,
         "from": _from,
         "to": _to,
-        "type": type
+        "type": type,
+        "smi_type": smi_type
 
     })
     response_json = response.json()
     return response_json
 
 
-async def get_stats_trust(session, thread_id, _from, _to, types, type="smi"):
+async def get_stats_trust(session, thread_id, _from, _to, types, smi_type, type="smi"):
     if type not in types:
         return []
     payload = {"thread_id": thread_id,
                "from": _from,
                "to": _to,
-               "type": type
-
+               "type": type,
+                "smi_type": smi_type
                }
     response = await post(session, THREAD_STATS, payload)
     response_json = response.json()

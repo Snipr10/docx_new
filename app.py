@@ -144,6 +144,7 @@ async def tonal(request: Request):
     thread_ids_str = body_json.get('thread_ids')
     iogv_name = body_json.get('iogv_name')
     types = body_json.get('type')
+    smi_type = body_json.get('smi_type', 'any')
 
     thread_ids = []
 
@@ -151,7 +152,7 @@ async def tonal(request: Request):
         thread_ids.append(int(id_))
 
     try:
-        document = await docx_tonal(thread_ids, _from_parse, _to_parse, iogv_name, types)
+        document = await docx_tonal(thread_ids, _from_parse, _to_parse, iogv_name, types, smi_type)
 
         f = BytesIO()
         document.save(f)
