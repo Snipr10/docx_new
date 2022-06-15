@@ -170,7 +170,6 @@ def _last_time(day):
     return datetime(day.year, day.month, day.day, 23, 59, 59).strftime('%Y-%m-%d %H:%M:%S')
 
 
-
 async def creater(reference_ids, login_user, password, thread_id, periods_data):
     async with httpx.AsyncClient() as session:
 
@@ -212,11 +211,10 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
 
         sub = await get_start_date(session)
         try:
-            topics_tables = await add_topics(session, periods_data, sub, thread_id, reference_ids)
-            statistic_tables = await add_statistic(session, periods_data, sub, thread_id, reference_ids)
-            trust_tables = await get_trust(session, periods_data, sub, thread_id, reference_ids)
-            charts_data = await get_posts_statistic(session, periods_data, sub, thread_id, reference_ids)
 
+            topics_tables, statistic_tables, trust_tables, charts_data = await get_tables(session, periods_data, sub,
+                                                                                          thread_id,
+                                                                                          reference_ids)
         except Exception as e:
             logger.error(f"get_tables {e}")
             try:
@@ -599,7 +597,7 @@ async def subects_static(session, reference_id, thread_id, periods_data, table_n
             res = response.json()
             if res.get("gs", {}).get("total", {}).get("posts", 0) is not None and res.get("gs", {}).get("total",
                                                                                                         {}).get(
-                    "posts", 0) > 0:
+                "posts", 0) > 0:
                 res_gs = response.json().get("gs", {})
             total_posts = 0
             total_positive = 0
@@ -967,7 +965,8 @@ async def get_trust_res_net_social_range(session, network_ids, thread_id, refere
         # for trust_state_date in await asyncio.gather(*res_net_social_range_gather):
         #     res_net_social_range.extend(trust_state_date)
         for net_id in network_ids:
-            res_net_social_range.extend(await get_trust_stat(session, thread_id, reference_id, periods_data, [net_id], 3, None))
+            res_net_social_range.extend(
+                await get_trust_stat(session, thread_id, reference_id, periods_data, [net_id], 3, None))
         return res_net_social_range
     except Exception as e:
         logger.error(f"get_trust_res_net_social_range {e}")
@@ -978,39 +977,39 @@ async def get_trust_for_sub(session, reference_id, network_ids, title, periods_d
     try:
         table = None
 
-        # res_net_social_range, res_net_gs_range, res_net_social_pos_neu, res_net_gs_range_pos_neu, res_net_social_neg, res_net_gs_range_neg = await asyncio.gather(
-        #     get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, periods_data),
-        #     get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, None),
-        #     get_trust_stat(session, thread_id, reference_id, periods_data, network_ids, 5, False),
-        #     get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, False),
-        #     get_trust_stat(session, thread_id, reference_id, periods_data, network_ids, 5, True),
-        #     get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, True)
-        # )
+        res_net_social_range, res_net_gs_range, res_net_social_pos_neu, res_net_gs_range_pos_neu, res_net_social_neg, res_net_gs_range_neg = await asyncio.gather(
+            get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, periods_data),
+            get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, None),
+            get_trust_stat(session, thread_id, reference_id, periods_data, network_ids, 5, False),
+            get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, False),
+            get_trust_stat(session, thread_id, reference_id, periods_data, network_ids, 5, True),
+            get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, True)
+        )
 
-        res_net_social_range = await get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, periods_data)
-        res_net_gs_range = await get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, None)
-        res_net_social_pos_neu = await get_trust_stat(session, thread_id, reference_id, periods_data, network_ids, 5, False)
-        res_net_gs_range_pos_neu = await get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, False)
-        res_net_social_neg = await get_trust_stat(session, thread_id, reference_id, periods_data, network_ids, 5, True)
-        res_net_gs_range_neg = await get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, True)
+        # res_net_social_range = await get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, periods_data)
+        # res_net_gs_range = await get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, None)
+        # res_net_social_pos_neu = await get_trust_stat(session, thread_id, reference_id, periods_data, network_ids, 5, False)
+        # res_net_gs_range_pos_neu = await get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, False)
+        # res_net_social_neg = await get_trust_stat(session, thread_id, reference_id, periods_data, network_ids, 5, True)
+        # res_net_gs_range_neg = await get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, True)
 
         if len(res_net_social_range) > 0 or len(res_net_gs_range) > 0 or len(res_net_social_pos_neu) > 0 or len(
                 res_net_gs_range_pos_neu) > 0 or len(res_net_social_neg) > 0 or len(res_net_gs_range_neg) > 0:
-            # table_social_data_range, table_smi_data_range, table_social_data_pos_neu, table_smi_data_pos_neu, table_social_data_neg, table_smi_data_neg = await asyncio.gather(
-            #     get_attendance(session, res_net_social_range),
-            #     get_attendance(session, res_net_gs_range),
-            #     get_attendance(session, res_net_social_pos_neu),
-            #     get_attendance(session, res_net_gs_range_pos_neu),
-            #     get_attendance(session, res_net_social_neg),
-            #     get_attendance(session, res_net_gs_range_neg)
-            # )
+            table_social_data_range, table_smi_data_range, table_social_data_pos_neu, table_smi_data_pos_neu, table_social_data_neg, table_smi_data_neg = await asyncio.gather(
+                get_attendance(session, res_net_social_range),
+                get_attendance(session, res_net_gs_range),
+                get_attendance(session, res_net_social_pos_neu),
+                get_attendance(session, res_net_gs_range_pos_neu),
+                get_attendance(session, res_net_social_neg),
+                get_attendance(session, res_net_gs_range_neg)
+            )
 
-            table_social_data_range = await get_attendance(session, res_net_social_range)
-            table_smi_data_range = await get_attendance(session, res_net_gs_range)
-            table_social_data_pos_neu = await get_attendance(session, res_net_social_pos_neu)
-            table_smi_data_pos_neu = await get_attendance(session, res_net_gs_range_pos_neu)
-            table_social_data_neg = await get_attendance(session, res_net_social_neg)
-            table_smi_data_neg = await get_attendance(session, res_net_gs_range_neg)
+            # table_social_data_range = await get_attendance(session, res_net_social_range)
+            # table_smi_data_range = await get_attendance(session, res_net_gs_range)
+            # table_social_data_pos_neu = await get_attendance(session, res_net_social_pos_neu)
+            # table_smi_data_pos_neu = await get_attendance(session, res_net_gs_range_pos_neu)
+            # table_social_data_neg = await get_attendance(session, res_net_social_neg)
+            # table_smi_data_neg = await get_attendance(session, res_net_gs_range_neg)
 
             table = (title,
                      table_social_data_range, table_smi_data_range,
@@ -1068,11 +1067,14 @@ async def post_static(session, reference_id, thread_id, periods_data, chart_name
 
 
 async def get_tables(session, periods_data, sub, thread_id, reference_ids):
-    return await asyncio.gather(add_topics(session, periods_data, sub, thread_id, reference_ids),
-                                add_statistic(session, periods_data, sub, thread_id, reference_ids),
-                                get_trust(session, periods_data, sub, thread_id, reference_ids),
-                                get_posts_statistic(session, periods_data, sub, thread_id, reference_ids),
-                                )
+    topics_tables, statistic_tables, charts_data = await asyncio.gather(
+        add_topics(session, periods_data, sub, thread_id, reference_ids),
+        add_statistic(session, periods_data, sub, thread_id, reference_ids),
+        get_posts_statistic(session, periods_data, sub, thread_id, reference_ids),
+        )
+    trust_tables = await get_trust(session, periods_data, sub, thread_id, reference_ids),
+
+    return topics_tables, statistic_tables, trust_tables, charts_data
 
 
 def add_hyperlink(paragraph, url, text, color, underline, is_italic=False):
