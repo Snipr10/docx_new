@@ -20,6 +20,6 @@ async def post(session, url, body):
             except Exception as e:
                 logger.error(f"post {e}")
         attempt += 1
-        if response.status_code == 200:
+        if response is not None and response.status_code == 200:
             break
     return response
