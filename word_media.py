@@ -250,8 +250,8 @@ async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id
 
         paragraph_ilnk = document.add_paragraph()
         url = post['uri']
-        if len(url) > 65:
-            url = url[:65]
+        # if len(url) > 65:
+        #     url = url[:65]
         paragraph_link = paragraph_ilnk.add_run(url, style=STYLE)
         paragraph_link.font.size = Pt(12)
 
