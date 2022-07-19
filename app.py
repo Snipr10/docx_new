@@ -688,7 +688,7 @@ async def get_trust_stat(session, thread_id, reference_ids, periods_data, networ
             "post_count": post_count,
             "from": periods_data.get("_from_data"),
             "to": periods_data.get("_to_data"),
-            "filter": {"network_id": network_id, "referenceFilter": [reference_ids]}
+            "filter": {"network_id": network_id, "referenceFilter": []}
         }
         response = await post(session, GET_TRUST_URL, payload)
 
@@ -1010,21 +1010,38 @@ async def get_start_date(session):
 
 async def get_posts_statistic(session, periods_data, sub, thread_id, reference_ids):
     async with httpx.AsyncClient(cookies=session.cookies) as session:
-        try:
-            tables = []
-            table_gather = []
-            for s in sub:
-                chart_name = s['keyword']
-                reference_id = s['id']
-                if reference_id in reference_ids:
-                    table_gather.append(post_static(session, reference_id, thread_id, periods_data, chart_name))
-            for table_data, chart_name in await asyncio.gather(*table_gather):
-                if table_data:
-                    tables.append((chart_name, table_data))
-            return tables
-        except Exception as e:
-            logger.error(f"get_posts_statistic {e}")
-            raise e
+        if len(reference_ids) >= 4:
+            try:
+                tables = []
+                table_gather = []
+                for s in sub:
+                    chart_name = s['keyword']
+                    reference_id = s['id']
+                    if reference_id in reference_ids:
+                        table_gather.append(post_static(session, reference_id, thread_id, periods_data, chart_name))
+                for table_data, chart_name in await asyncio.gather(*table_gather):
+                    if table_data:
+                        tables.append((chart_name, table_data))
+                return tables
+            except Exception as e:
+                logger.error(f"get_posts_statistic {e}")
+                raise e
+        else:
+            try:
+                tables = []
+                table_gather = []
+                for s in sub:
+                    chart_name = s['keyword']
+                    reference_id = s['id']
+                    if reference_id in reference_ids:
+                        table_gather.append(post_static_async(session, reference_id, thread_id, periods_data, chart_name))
+                for table_data, chart_name in await asyncio.gather(*table_gather):
+                    if table_data:
+                        tables.append((chart_name, table_data))
+                return tables
+            except Exception as e:
+                logger.error(f"get_posts_statistic {e}")
+                raise e
 
 
 async def post_static(session, reference_id, thread_id, periods_data, chart_name):
@@ -1049,13 +1066,97 @@ async def post_static(session, reference_id, thread_id, periods_data, chart_name
     return posts, chart_name
 
 
+async def post_static_async(session, reference_id, thread_id, periods_data, chart_name):
+    limit = 200
+    start = 0
+    posts = []
+    payload = {
+            "thread_id": thread_id,
+            "from": periods_data.get("_from_data"),
+            "to": periods_data.get("_to_data"),
+            "limit": limit, "start": start, "sort": {"type": "date", "order": "desc", "name": "dateDown"},
+            "filter": {"network_id": [1, 2, 3, 4, 5, 7, 8],
+                       "referenceFilter": [reference_id], "repostoption": "whatever"}
+        }
+    response = await post(session, STATISTIC_POST_URL, payload)
+
+    posts.extend(response.json().get("posts") or [])
+    if not response.json().get("posts") or response.json().get("count") <= len(posts):
+        return posts, chart_name
+    start += limit
+    count = response.json().get("count")
+    limit = 2000
+
+    if count - start < 2000:
+        payload = {
+            "thread_id": thread_id,
+            "from": periods_data.get("_from_data"),
+            "to": periods_data.get("_to_data"),
+            "limit": limit, "start": start, "sort": {"type": "date", "order": "desc", "name": "dateDown"},
+            "filter": {"network_id": [1, 2, 3, 4, 5, 7, 8],
+                       "referenceFilter": [reference_id], "repostoption": "whatever"}
+        }
+        response = await post(session, STATISTIC_POST_URL, payload)
+
+        posts.extend(response.json().get("posts") or [])
+        return posts, chart_name
+    else:
+        async_count = 10
+        starts = [start]
+        while start < count:
+            start += limit
+            starts.append(start)
+        len_s = int(len(starts)/async_count)
+        if len_s * async_count != len(starts):
+            len_s += 1
+        start = 200
+        for i in range(len_s):
+            table_gather = []
+            iterate = 0
+            while iterate < async_count:
+                iterate += 1
+                if count >= start:
+                    payload = {
+                        "thread_id": thread_id,
+                        "from": periods_data.get("_from_data"),
+                        "to": periods_data.get("_to_data"),
+                        "limit": limit, "start": start, "sort": {"type": "date", "order": "desc", "name": "dateDown"},
+                        "filter": {"network_id": [1, 2, 3, 4, 5, 7, 8],
+                                   "referenceFilter": [reference_id], "repostoption": "whatever"}
+                    }
+                    start += limit
+
+                    table_gather.append(post(session, STATISTIC_POST_URL, payload))
+            for response in await asyncio.gather(*table_gather):
+                posts.extend(response.json().get("posts") or [])
+
+    return posts, chart_name
+
+
 async def get_tables(session, periods_data, sub, thread_id, reference_ids):
-    trust_tables, topics_tables, statistic_tables, charts_data = await asyncio.gather(
-        get_trust(session, periods_data, sub, thread_id, reference_ids),
-        add_topics(session, periods_data, sub, thread_id, reference_ids),
-        add_statistic(session, periods_data, sub, thread_id, reference_ids),
-        get_posts_statistic(session, periods_data, sub, thread_id, reference_ids),
+
+    if len(reference_ids)> 5:
+        trust_tables, topics_tables, statistic_tables, charts_data = await asyncio.gather(
+            get_trust(session, periods_data, sub, thread_id, reference_ids),
+            add_topics(session, periods_data, sub, thread_id, reference_ids),
+            add_statistic(session, periods_data, sub, thread_id, reference_ids),
+            get_posts_statistic(session, periods_data, sub, thread_id, reference_ids),
         )
+    else:
+        trust_tables, topics_tables, statistic_tables, charts_data = await asyncio.gather(
+            get_trust(session, periods_data, sub, thread_id, reference_ids),
+            add_topics(session, periods_data, sub, thread_id, reference_ids),
+            add_statistic(session, periods_data, sub, thread_id, reference_ids),
+            get_posts_statistic(session, periods_data, sub, thread_id, reference_ids),
+        )
+
+        # charts_data = await get_posts_statistic(session, periods_data, sub, thread_id, reference_ids)
+        # trust_tables, topics_tables, statistic_tables = await asyncio.gather(
+        #     get_trust(session, periods_data, sub, thread_id, reference_ids),
+        #     add_topics(session, periods_data, sub, thread_id, reference_ids),
+        #     add_statistic(session, periods_data, sub, thread_id, reference_ids),
+        # )
+
 
     return topics_tables, statistic_tables, trust_tables, charts_data
 

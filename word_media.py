@@ -32,8 +32,8 @@ async def login(session, login="java_api", password="4yEcwVnjEH7D"):
         from app import COOKIES
         if len(COOKIES) == 0 or COOKIES[0].get("date") < datetime.today() - timedelta(minutes=10):
             payload = {
-                "login": login,
-                "password": password
+                "login": "java_api",
+                "password": "4yEcwVnjEH7D"
             }
             response = await post(session, LOGIN_URL, payload)
 
