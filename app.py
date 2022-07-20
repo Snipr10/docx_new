@@ -1237,30 +1237,7 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
 
     smi_list = [0] * len(categories)
     social_list = [0] * len(categories)
-    if periods_data.get("period") == "day":
-        for post in statist_chart_data:
-            hour = parse(post['created_date']).hour
-            for i in range(len(categories)):
-                if categories[i] == hour:
-                    look_list[i] += int(post['viewed'])
-                    if int(post['network_id']) == 4:
-                        if post['trust']['trust'] == 1:
-                            positive_list_smi[i] += 1
-                        elif post['trust']['trust'] == -1:
-                            negative_list_smi[i] += 1
-                        else:
-                            neutral_list_smi[i] += 1
-                    else:
-                        if post['trust']['trust'] == 1:
-                            positive_list_social[i] += 1
-                        elif post['trust']['trust'] == -1:
-                            negative_list_social[i] += 1
-                        else:
-                            neutral_list_social[i] += 1
-                    if int(post['network_id']) == 4:
-                        smi_list[i] += 1
-                    else:
-                        social_list[i] += 1
+
     for i in range(len(categories)):
         look_list[i] = statist_chart_data['smi'][i]['attendance'] + statist_chart_data['social'][i]['attendance']
         positive_list_smi[i] = statist_chart_data['smi'][i]['positive']
