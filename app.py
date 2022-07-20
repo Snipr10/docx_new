@@ -39,6 +39,7 @@ SUBECT_URL = "https://api.glassen-it.com/component/socparser/users/getreferences
 SUBECT_TOPIC_URL = "https://api.glassen-it.com/component/socparser/stats/getMainTopics"
 STATISTIC_URL = "https://api.glassen-it.com/component/socparser/content/getpostcount"
 STATISTIC_POST_URL = "https://api.glassen-it.com/component/socparser/content/posts"
+STATISTIC_TRUST_GRAPH = "https://api.glassen-it.com/component/socparser/stats/trustViewsGraph"
 
 THREAD_URL = "https://api.glassen-it.com/component/socparser/threads/get"
 
@@ -1008,6 +1009,24 @@ async def get_start_date(session):
     return await subects(session)
 
 
+# async def get_posts_statistic(session, periods_data, sub, thread_id, reference_ids):
+#     async with httpx.AsyncClient(cookies=session.cookies) as session:
+#         try:
+#             tables = []
+#             table_gather = []
+#             for s in sub:
+#                 chart_name = s['keyword']
+#                 reference_id = s['id']
+#                 if reference_id in reference_ids:
+#                     table_gather.append(post_static(session, reference_id, thread_id, periods_data, chart_name))
+#             for table_data, chart_name in await asyncio.gather(*table_gather):
+#                 if table_data:
+#                     tables.append((chart_name, table_data))
+#             return tables
+#         except Exception as e:
+#             logger.error(f"get_posts_statistic {e}")
+#             raise e
+
 async def get_posts_statistic(session, periods_data, sub, thread_id, reference_ids):
     async with httpx.AsyncClient(cookies=session.cookies) as session:
         try:
@@ -1027,26 +1046,39 @@ async def get_posts_statistic(session, periods_data, sub, thread_id, reference_i
             raise e
 
 
+# async def post_static(session, reference_id, thread_id, periods_data, chart_name):
+#     limit = 200
+#     start = 0
+#     posts = []
+#     while True:
+#         payload = {
+#             "thread_id": thread_id,
+#             "from": periods_data.get("_from_data"),
+#             "to": periods_data.get("_to_data"),
+#             "limit": limit, "start": start, "sort": {"type": "date", "order": "desc", "name": "dateDown"},
+#             "filter": {"network_id": [1, 2, 3, 4, 5, 7, 8],
+#                        "referenceFilter": [reference_id], "repostoption": "whatever"}
+#         }
+#         response = await post(session, STATISTIC_POST_URL, payload)
+#
+#         posts.extend(response.json().get("posts") or [])
+#         if not response.json().get("posts") or response.json().get("count") <= len(posts):
+#             break
+#         start += limit
+#     return posts, chart_name
+
+
 async def post_static(session, reference_id, thread_id, periods_data, chart_name):
-    limit = 200
-    start = 0
-    posts = []
-    while True:
-        payload = {
+    payload = {
             "thread_id": thread_id,
             "from": periods_data.get("_from_data"),
             "to": periods_data.get("_to_data"),
-            "limit": limit, "start": start, "sort": {"type": "date", "order": "desc", "name": "dateDown"},
             "filter": {"network_id": [1, 2, 3, 4, 5, 7, 8],
-                       "referenceFilter": [reference_id], "repostoption": "whatever"}
+                       "referenceFilter": [reference_id]}
         }
-        response = await post(session, STATISTIC_POST_URL, payload)
+    response = await post(session, STATISTIC_TRUST_GRAPH, payload)
 
-        posts.extend(response.json().get("posts") or [])
-        if not response.json().get("posts") or response.json().get("count") <= len(posts):
-            break
-        start += limit
-    return posts, chart_name
+    return response.json(), chart_name
 
 
 async def get_tables(session, periods_data, sub, thread_id, reference_ids):
@@ -1172,17 +1204,27 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
 
     categories = []
     categories_str = []
-    if periods_data.get("period") == "day":
-        for i in range(today_all.hour + 1):
-            categories.append(i)
-            categories_str.append(f"{i}.00")
-    else:
-        # start_date = get_from_date_datetime(periods_data.get("period")).date()
-        start_date = dateutil.parser.parse(periods_data.get("_from_data")).date()
-        while start_date <= dateutil.parser.parse(periods_data.get("_to_data")).date():
+
+    for i in statist_chart_data['smi']:
+        if ":" in i['item_date']:
+            categories.append(dateutil.parser.parse(i['item_date']).time())
+            categories_str.append(f"{dateutil.parser.parse(i['item_date']).time().hour}.00")
+        else:
+            start_date = dateutil.parser.parse(i['item_date']).date()
             categories.append(start_date)
             categories_str.append(f"{start_date.day}.{start_date.month}")
-            start_date += timedelta(days=1)
+
+    # if periods_data.get("period") == "day":
+    #     for i in range(today_all.hour + 1):
+    #         categories.append(i)
+    #         categories_str.append(f"{i}.00")
+    # else:
+    #     # start_date = get_from_date_datetime(periods_data.get("period")).date()
+    #     start_date = dateutil.parser.parse(periods_data.get("_from_data")).date()
+    #     while start_date <= dateutil.parser.parse(periods_data.get("_to_data")).date():
+    #         categories.append(start_date)
+    #         categories_str.append(f"{start_date.day}.{start_date.month}")
+    #         start_date += timedelta(days=1)
 
     negative_list_smi = [0] * len(categories)
     neutral_list_smi = [0] * len(categories)
@@ -1219,29 +1261,16 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
                         smi_list[i] += 1
                     else:
                         social_list[i] += 1
-    else:
-        for post in statist_chart_data:
-            for i in range(len(categories)):
-                if categories[i] == parse(post['created_date']).date():
-                    look_list[i] += int(post['viewed'])
-                    if int(post['network_id']) == 4:
-                        if post['trust']['trust'] == 1:
-                            positive_list_smi[i] += 1
-                        elif post['trust']['trust'] == -1:
-                            negative_list_smi[i] += 1
-                        else:
-                            neutral_list_smi[i] += 1
-                    else:
-                        if post['trust']['trust'] == 1:
-                            positive_list_social[i] += 1
-                        elif post['trust']['trust'] == -1:
-                            negative_list_social[i] += 1
-                        else:
-                            neutral_list_social[i] += 1
-                    if int(post['network_id']) == 4:
-                        smi_list[i] += 1
-                    else:
-                        social_list[i] += 1
+    for i in range(len(categories)):
+        look_list[i] = statist_chart_data['smi'][i]['attendance'] + statist_chart_data['social'][i]['attendance']
+        positive_list_smi[i] = statist_chart_data['smi'][i]['positive']
+        negative_list_smi[i] = statist_chart_data['smi'][i]['negative']
+        neutral_list_smi[i] = statist_chart_data['smi'][i]['netural']
+        positive_list_social[i] = statist_chart_data['social'][i]['positive']
+        negative_list_social[i] = statist_chart_data['social'][i]['negative']
+        neutral_list_social[i] = statist_chart_data['social'][i]['netural']
+        smi_list[i] = statist_chart_data['smi'][i]['item_count']
+        social_list[i] = statist_chart_data['social'][i]['item_count']
 
     chart_data = CategoryChartData()
     chart_data.categories = categories_str
