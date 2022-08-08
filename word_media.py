@@ -205,6 +205,7 @@ def convert_date(date):
 
 
 async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id):
+    from app import UTC
     posts, smi, social, names = await get_session_result(thread_id, convert_date(_from), convert_date(_to),
                                                          referenceFilter,
                                                          network_id, user_id)
@@ -235,7 +236,7 @@ async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id
     add_title_data(title, "Объекты", ", ".join(names))
     add_title_data(title, "\nИсточники публикаций", type_network)
     add_title_data(title, "\nВременной период", f"{_from} - {_to}")
-    add_title_data(title, "\nДата подготовки отчета", datetime.today().strftime("%m/%d/%Y, %H:%M:%S"))
+    add_title_data(title, "\nДата подготовки отчета", (datetime.today() + timedelta(hours=UTC)).strftime("%Y-%m-%d %H:%M:%S"))
     add_title_data(title, f"\nВсего сообщений", number_networks)
     insertHR(document.add_paragraph(), line="single")
 
