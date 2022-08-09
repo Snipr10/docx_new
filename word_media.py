@@ -25,6 +25,7 @@ SUBECT_URL = "https://api.glassen-it.com/component/socparser/users/getreferences
 STATISTIC_POST_URL = "https://api.glassen-it.com/component/socparser/content/posts"
 STYLE = "Times New Roman"
 PT = Pt(10.5)
+DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
 
 async def login(session, login="java_api", password="4yEcwVnjEH7D"):
@@ -235,8 +236,14 @@ async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id
 
     add_title_data(title, "Объекты", ", ".join(names))
     add_title_data(title, "\nИсточники публикаций", type_network)
-    add_title_data(title, "\nВременной период", f"{_from} - {_to}")
-    add_title_data(title, "\nДата подготовки отчета", (datetime.today() + timedelta(hours=UTC)).strftime("%Y-%m-%d %H:%M:%S"))
+    _from_str = dateutil.parser.parse(_from).strftime(DATE_FORMAT)
+    _date_prepare = datetime.today() + timedelta(hours=UTC)
+    if _date_prepare < dateutil.parser.parse(_to):
+        _to_str = _date_prepare.strftime(DATE_FORMAT)
+    else:
+        _to_str = dateutil.parser.parse(_to).strftime(DATE_FORMAT)
+    add_title_data(title, "\nВременной период", f"{_from_str} - {_to_str}")
+    add_title_data(title, "\nДата подготовки отчета", _date_prepare.strftime(DATE_FORMAT))
     add_title_data(title, f"\nВсего сообщений", number_networks)
     insertHR(document.add_paragraph(), line="single")
 
