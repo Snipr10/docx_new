@@ -252,7 +252,7 @@ async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id
         paragraph_run = post_paragraph.add_run(post['author'], style=STYLE)
         paragraph_run.bold = True
         paragraph_run.font.size = Pt(12)
-        paragraph_run = post_paragraph.add_run(f" {post['created_date']}"
+        paragraph_run = post_paragraph.add_run(f" {dateutil.parser.parse(post['created_date']).strftime(DATE_FORMAT)}"
                                                "\n ", style=STYLE)
         paragraph_run.font.size = Pt(12)
 
