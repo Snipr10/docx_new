@@ -106,6 +106,8 @@ async def index_media(request: Request):
     _from = body_json.get('from')
     _to = body_json.get('to')
 
+    _sort = bool(body_json.get('sort', 0))
+
     referenceFilter = []
     for id_ in body_json.get('reference_ids'):
         referenceFilter.append(int(id_))
@@ -118,7 +120,7 @@ async def index_media(request: Request):
         network_id = [1, 2, 3, 4, 5, 7, 8]
     try:
         document = await docx_media(thread_id, _from, _to,
-                                    referenceFilter, network_id, body_json.get('user_id'))
+                                    referenceFilter, network_id, body_json.get('user_id'), _sort)
 
         f = BytesIO()
         document.save(f)

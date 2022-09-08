@@ -205,7 +205,7 @@ def convert_date(date):
         return dateutil.parser.parse(date).date().strftime("%d-%m-%Y")
 
 
-async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id):
+async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id, _sort=False):
     from app import UTC
     posts, smi, social, names = await get_session_result(thread_id, convert_date(_from), convert_date(_to),
                                                          referenceFilter,
@@ -246,7 +246,8 @@ async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id
     add_title_data(title, "\nДата подготовки отчета", _date_prepare.strftime(DATE_FORMAT))
     add_title_data(title, f"\nВсего сообщений", number_networks)
     insertHR(document.add_paragraph(), line="single")
-
+    if _sort:
+        posts.sort(key=lambda x: str(x['author']))
     for post in posts:
         post_paragraph = document.add_paragraph()
         paragraph_run = post_paragraph.add_run(post['author'], style=STYLE)
