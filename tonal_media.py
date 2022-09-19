@@ -20,20 +20,13 @@ from pptx.enum.chart import XL_CHART_TYPE
 from resp import post
 from word_media import add_title_data, login
 from docx.enum.table import WD_TABLE_ALIGNMENT
-
+from settings import WEEK_TRUST, THREAD_STATS, THREAD_DATA, OWNERS_TOP, SUBECT_URL, STATISTIC_POST_URL
 logger = logging.getLogger('foo-logger')
 
 CLEANR = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
 
 TIMEOUT = 15 * 60
-WEEK_TRUST = "https://api.glassen-it.com/component/socparser/content/getweektrust"
-THREAD_STATS = "https://api.glassen-it.com/component/socparser/stats/getThreadStats"
 
-THREAD_DATA = "https://api.glassen-it.com/component/socparser/thread/additional_info"
-OWNERS_TOP = "https://api.glassen-it.com/component/socparser/stats/getOwnersTopByPostCount"
-
-SUBECT_URL = "https://api.glassen-it.com/component/socparser/users/getreferences"
-STATISTIC_POST_URL = "https://api.glassen-it.com/component/socparser/content/posts"
 STYLE = "Times New Roman"
 PT = Pt(10.5)
 

@@ -14,21 +14,19 @@ from docx import Document
 from docx.oxml.shared import OxmlElement
 from docx.oxml.ns import qn
 from resp import post
-
+from settings import LOGIN_URL, SUBECT_URL, STATISTIC_POST_URL, login_l, password_p
 logger = logging.getLogger('foo-logger')
 
 CLEANR = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
 
 TIMEOUT = 15 * 60
-LOGIN_URL = "https://api.glassen-it.com/component/socparser/authorization/login"
-SUBECT_URL = "https://api.glassen-it.com/component/socparser/users/getreferences"
-STATISTIC_POST_URL = "https://api.glassen-it.com/component/socparser/content/posts"
+
 STYLE = "Times New Roman"
 PT = Pt(10.5)
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
 
-async def login(session, login="java_api", password="4yEcwVnjEH7D"):
+async def login(session, login=login_l, password=password_p):
     try:
         from app import COOKIES
         if len(COOKIES) == 0 or COOKIES[0].get("date") < datetime.today() - timedelta(minutes=10):

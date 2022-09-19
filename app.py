@@ -33,20 +33,11 @@ from tonal_media import docx_tonal
 from word_media import docx_media, login, convert_date
 from logging.config import dictConfig
 from log_conf import log_config
+from settings import LOGIN_URL, SUBECT_URL, SUBECT_TOPIC_URL, \
+    STATISTIC_URL, STATISTIC_POST_URL, STATISTIC_TRUST_GRAPH, THREAD_URL, GET_TRUST_URL, GET_ATTENDANCE_URL
 
-LOGIN_URL = "https://api.glassen-it.com/component/socparser/authorization/login"
-SUBECT_URL = "https://api.glassen-it.com/component/socparser/users/getreferences"
-SUBECT_TOPIC_URL = "https://api.glassen-it.com/component/socparser/stats/getMainTopics"
-STATISTIC_URL = "https://api.glassen-it.com/component/socparser/content/getpostcount"
-STATISTIC_POST_URL = "https://api.glassen-it.com/component/socparser/content/posts"
-STATISTIC_TRUST_GRAPH = "https://api.glassen-it.com/component/socparser/stats/trustViewsGraph"
-
-THREAD_URL = "https://api.glassen-it.com/component/socparser/threads/get"
-
-GET_TRUST_URL = "https://api.glassen-it.com/component/socparser/content/getposttoptrust"
 COOKIES = []
 
-GET_ATTENDANCE_URL = "https://api.glassen-it.com/component/socparser/stats/getpostattendance"
 KOM_NAME = "Комитет по образованию"
 STYLE = "Times New Roman"
 PT = Pt(10.5)
