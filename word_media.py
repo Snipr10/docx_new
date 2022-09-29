@@ -146,7 +146,7 @@ async def get_posts(session, thread_id, _from, _to, network_id, referenceFilter)
             smi += 1
         else:
             social += 1
-        if post.get("friendly") != 0:
+        if post.get("friendly") in [2, 1, "2", "1"]:
             friendly += 1
     return posts, smi, social, friendly
 
