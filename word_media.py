@@ -286,6 +286,9 @@ async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id
 
             post_paragraph_friendly = post_paragraph_friendly.add_run("Дружественный источник!", style=STYLE)
             post_paragraph_friendly.font.size = Pt(12)
+            post_paragraph_friendly.bold = True
+            post_paragraph_friendly.italic = True
+
         post_paragraph_text = document.add_paragraph()
         cleantext = re.sub(CLEANR, '', post['text'])
         post_paragraph_text = post_paragraph_text.add_run(cleantext, style=STYLE)
