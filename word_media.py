@@ -140,23 +140,26 @@ async def get_posts(session, thread_id, _from, _to, network_id, referenceFilter)
         start += limit
     smi = 0
     social = 0
+    friendly = 0
     for post in posts:
         if post.get("network_id") == "4":
             smi += 1
         else:
             social += 1
-    return posts, smi, social
+        if post.get("friendly") != 0:
+            friendly += 1
+    return posts, smi, social, friendly
 
 
 async def get_session_result(thread_id, _from, _to, referenceFilter, network_id, user_id):
     async with httpx.AsyncClient() as session:
         session = await login(session)
 
-        (posts, smi, social), names = await asyncio.gather(
+        (posts, smi, social, friendly), names = await asyncio.gather(
             get_posts(session, thread_id, _from, _to, network_id, referenceFilter),
             subects_names(session, referenceFilter, user_id)
         )
-        return posts, smi, social, names
+        return posts, smi, social, friendly, names
 
 
 def insertHR(paragraph, line="double"):
@@ -205,7 +208,7 @@ def convert_date(date):
 
 async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id, _sort=False):
     from app import UTC
-    posts, smi, social, names = await get_session_result(thread_id, convert_date(_from), convert_date(_to),
+    posts, smi, social, friendly, names = await get_session_result(thread_id, convert_date(_from), convert_date(_to),
                                                          referenceFilter,
                                                          network_id, user_id)
     document = Document()
@@ -243,6 +246,15 @@ async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id
     add_title_data(title, "\nВременной период", f"{_from_str} - {_to_str}")
     add_title_data(title, "\nДата подготовки отчета", _date_prepare.strftime(DATE_FORMAT))
     add_title_data(title, f"\nВсего сообщений", number_networks)
+    if friendly % 10 == 1:
+        friend_pud = f"{friendly} публикация"
+    elif friendly % 10 == 2 or friendly % 10 == 3 or friendly % 10 == 4:
+        friend_pud = f"{friendly} публикации"
+    else:
+        friend_pud = f"{friendly} публикаций"
+
+    add_title_data(title, f"\nИз них дружественных ", friend_pud)
+
     insertHR(document.add_paragraph(), line="single")
     if _sort:
         posts.sort(key=lambda x: str(x['author']))
@@ -269,7 +281,11 @@ async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id
             paragraph_title = post_paragraph_title.add_run(post['title'], style=STYLE)
             paragraph_title.bold = True
             paragraph_title.font.size = Pt(12)
+        if post.get("friendly"):
+            post_paragraph_friendly = document.add_paragraph()
 
+            post_paragraph_friendly = post_paragraph_friendly.add_run("Дружественный источник!", style=STYLE)
+            post_paragraph_friendly.font.size = Pt(12)
         post_paragraph_text = document.add_paragraph()
         cleantext = re.sub(CLEANR, '', post['text'])
         post_paragraph_text = post_paragraph_text.add_run(cleantext, style=STYLE)
