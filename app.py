@@ -30,7 +30,7 @@ from starlette.responses import StreamingResponse
 
 from resp import post
 from tonal_media import docx_tonal
-from word_media import docx_media, login, convert_date
+from word_media import docx_media, login, convert_date, get_posts, get_posts_info
 from logging.config import dictConfig
 from log_conf import log_config
 from settings import LOGIN_URL, SUBECT_URL, SUBECT_TOPIC_URL, \
@@ -206,7 +206,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         sub = await get_start_date(session)
         try:
 
-            topics_tables, statistic_tables, trust_tables, charts_data = await get_tables(session, periods_data, sub,
+            topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables(session, periods_data, sub,
                                                                                           thread_id,
                                                                                           reference_ids)
         except Exception as e:
@@ -232,10 +232,10 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         table_number = 1
 
         add_table_title = True
-        for topics_table_title, topics_table_data in topics_tables:
+        for topics_table_title, topics_table_data, reference_id in topics_tables:
             if add_table_title:
                 add_title_text(document, "Главные темы публикаций в СМИ", True)
-            add_table1(document, table_number, topics_table_title, topics_table_data, today_str, add_table_title)
+            add_table1(document, table_number, topics_table_title, topics_table_data, today_str, add_table_title, posts_info)
             table_number += 1
             add_table_title = False
 
@@ -244,7 +244,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
             if add_table_title:
                 document.add_page_break()
                 add_title_text(document, "\n Статистика по публикациям с упоминанием субъектов", True)
-            add_table2(document, table_number, statistic_table_date, statistic_table_title, today_str, add_table_title)
+            add_table2(document, table_number, statistic_table_date, statistic_table_title, today_str, add_table_title, posts_info)
             table_number += 1
             add_table_title = False
 
@@ -377,7 +377,7 @@ def set_left(cell):
     cell.paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.LEFT
 
 
-def add_table1(document, table_number, header, records, today, add_table_title):
+def add_table1(document, table_number, header, records, today, add_table_title, posts_info):
     parag_table_1 = document.add_paragraph()
     text = f' Таблица {table_number} - Главные темы публикаций СМИ с упоминаниями '
     if not add_table_title:
@@ -447,7 +447,7 @@ def add_table1(document, table_number, header, records, today, add_table_title):
     change_table_font(table)
 
 
-def add_table2(document, table_number, records, table_type, today, add_table_title):
+def add_table2(document, table_number, records, table_type, today, add_table_title, posts_info):
     parag_table = document.add_paragraph()
     text = f' Таблица {table_number}  - Общая статистика публикаций {table_type} с упоминаниями субъектов {today}'
     if not add_table_title:
@@ -460,13 +460,14 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
     parag_table.paragraph_format.space_after = Inches(0)
     parag_table.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.JUSTIFY
 
-    table = document.add_table(rows=1, cols=5)
+    table = document.add_table(rows=1, cols=6)
     table.style = 'TableGrid'
     table.columns[0].width = Inches(2.25)
-    table.columns[1].width = Inches(0.95)
-    table.columns[2].width = Inches(0.95)
-    table.columns[3].width = Inches(0.95)
-    table.columns[4].width = Inches(1)
+    table.columns[1].width = Inches(0.8)
+    table.columns[2].width = Inches(0.8)
+    table.columns[3].width = Inches(0.8)
+    table.columns[4].width = Inches(0.8)
+    table.columns[5].width = Inches(0.8)
 
     hdr_cells = table.rows[0].cells
     hdr_cells[0].text = "Субъекты"
@@ -475,12 +476,14 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
     hdr_cells[1].text = "Количество публикаций, всего"
     set_center(hdr_cells[1])
     table.rows[0].width = Inches(2)
-    hdr_cells[2].text = "Позитивные публикации"
+    hdr_cells[2].text = "Дружественные"
     set_center(hdr_cells[2])
-    hdr_cells[3].text = "Негативные публикации"
+    hdr_cells[3].text = "Позитивные публикации"
     set_center(hdr_cells[3])
-    hdr_cells[4].text = "Нейтральные публикации"
+    hdr_cells[4].text = "Негативные публикации"
     set_center(hdr_cells[4])
+    hdr_cells[5].text = "Нейтральные публикации"
+    set_center(hdr_cells[5])
     for cell in records:
         row_cells = table.add_row().cells
 
@@ -492,15 +495,21 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
 
         row_cells[1].text = str(total)
         set_center(row_cells[1])
-
-        row_cells[2].text = str(positive)
+        _, _, _, _, friendly_smi, friendly_social = posts_info[cell["reference_id"]]
+        friendly = 0
+        if table_type == "СМИ":
+            friendly = friendly_smi
+        else:
+            friendly = friendly_social
+        row_cells[2].text = str(friendly)
         set_center(row_cells[2])
-
-        row_cells[3].text = str(negative)
+        row_cells[3].text = str(positive)
         set_center(row_cells[3])
-
-        row_cells[4].text = str(total - positive - negative)
+        row_cells[4].text = str(negative)
         set_center(row_cells[4])
+
+        row_cells[5].text = str(total - positive - negative)
+        set_center(row_cells[5])
 
     change_table_font(table)
 
@@ -551,7 +560,7 @@ async def subects_topic(session, reference_id, thread_id, periods_data, table_na
                 res.append(r)
         except Exception as e:
             logger.error(f"subects_topic {e} {response.text}")
-        return res, table_name
+        return res, table_name, reference_id
     except Exception as e:
         logger.error(f"subects_topic {e}")
         raise e
@@ -621,7 +630,7 @@ async def subects_static(session, reference_id, thread_id, periods_data, table_n
                 res_soc = social
         except Exception as e:
             logger.error(f"subects_static {e} {response.text}")
-        return res_gs, res_soc, table_name
+        return res_gs, res_soc, table_name, reference_id
     except Exception as e:
         logger.error(f"subects_static {e}")
         raise e
@@ -637,9 +646,9 @@ async def add_topics(session, periods_data, sub, thread_id, reference_ids):
                 reference_id = s['id']
                 if reference_id in reference_ids:
                     table_gather.append(subects_topic(session, reference_id, thread_id, periods_data, table_name))
-            for table_data, table_name in await asyncio.gather(*table_gather):
+            for table_data, table_name, reference_id in await asyncio.gather(*table_gather):
                 if table_data:
-                    tables.append((table_name, table_data))
+                    tables.append((table_name, table_data, reference_id))
             return tables
         except Exception as e:
             logger.error(f"add_topics {e}")
@@ -657,12 +666,15 @@ async def add_statistic(session, periods_data, sub, thread_id, reference_ids):
                 reference_id = s['id']
                 if reference_id in reference_ids:
                     table_gather.append(subects_static(session, reference_id, thread_id, periods_data, s['keyword']))
-            for row_gs, ros_soc, table_name in await asyncio.gather(*table_gather):
+            for row_gs, ros_soc, table_name, reference_id in await asyncio.gather(*table_gather):
                 if row_gs:
                     row_gs["header"] = table_name
+                    row_gs["reference_id"] = reference_id
+
                     table_data_smi.append(row_gs)
                 if ros_soc:
                     ros_soc["header"] = table_name
+                    ros_soc["reference_id"] = reference_id
                     table_data_soc.append(ros_soc)
             if table_data_smi:
                 tables.append(("СМИ", table_data_smi))
@@ -1063,26 +1075,27 @@ async def get_posts_statistic(session, periods_data, sub, thread_id, reference_i
 
 async def post_static(session, reference_id, thread_id, periods_data, chart_name):
     payload = {
-            "thread_id": thread_id,
-            "from": periods_data.get("_from_data"),
-            "to": periods_data.get("_to_data"),
-            "filter": {"network_id": [1, 2, 3, 4, 5, 7, 8],
-                       "referenceFilter": [reference_id]}
-        }
+        "thread_id": thread_id,
+        "from": periods_data.get("_from_data"),
+        "to": periods_data.get("_to_data"),
+        "filter": {"network_id": [1, 2, 3, 4, 5, 7, 8],
+                   "referenceFilter": [reference_id]}
+    }
     response = await post(session, STATISTIC_TRUST_GRAPH, payload)
 
     return response.json(), chart_name
 
 
 async def get_tables(session, periods_data, sub, thread_id, reference_ids):
-    trust_tables, topics_tables, statistic_tables, charts_data = await asyncio.gather(
+    trust_tables, topics_tables, statistic_tables, charts_data, posts_info = await asyncio.gather(
         get_trust(session, periods_data, sub, thread_id, reference_ids),
         add_topics(session, periods_data, sub, thread_id, reference_ids),
         add_statistic(session, periods_data, sub, thread_id, reference_ids),
         get_posts_statistic(session, periods_data, sub, thread_id, reference_ids),
-        )
+        get_posts_info(session, thread_id, periods_data, reference_ids)
+    )
 
-    return topics_tables, statistic_tables, trust_tables, charts_data
+    return topics_tables, statistic_tables, trust_tables, charts_data, posts_info
 
 
 def add_hyperlink(paragraph, url, text, color, underline, is_italic=False):

@@ -15,6 +15,7 @@ from docx.oxml.shared import OxmlElement
 from docx.oxml.ns import qn
 from resp import post
 from settings import LOGIN_URL, SUBECT_URL, STATISTIC_POST_URL, login_l, password_p
+
 logger = logging.getLogger('foo-logger')
 
 CLEANR = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
@@ -117,7 +118,6 @@ async def subects_names(session, referenceFilter, user_id):
 
 
 async def get_posts(session, thread_id, _from, _to, network_id, referenceFilter):
-
     limit = 200
     start = 0
     posts = []
@@ -139,23 +139,45 @@ async def get_posts(session, thread_id, _from, _to, network_id, referenceFilter)
             break
         start += limit
     smi = 0
+    friendly_smi = 0
     social = 0
-    friendly = 0
+    friendly_social = 0
     for post in posts:
         if post.get("network_id") == "4":
             smi += 1
+            if check_friendly(post):
+                friendly_smi += 1
         else:
             social += 1
-        if post.get("friendly") in [2, 1, "2", "1"]:
-            friendly += 1
-    return posts, smi, social, friendly
+            if check_friendly(post):
+                friendly_social += 1
+
+    return posts, smi, social, friendly_smi + friendly_social, friendly_smi, friendly_social, referenceFilter
+
+
+def check_friendly(post):
+    if post.get("friendly") in [2, 1, "2", "1"]:
+        return True
+    return False
+
+
+async def get_posts_info(session, thread_id, periods_data, referenceFilter):
+    table_gather = []
+    for rec in referenceFilter:
+        table_gather.append(get_posts(session, thread_id, periods_data.get("_from_data"), periods_data.get("_to_data"),
+                                      [1, 2, 3, 5, 7, 8], [rec]))
+    res = {}
+    for (posts, smi, social, friendly, friendly_smi, friendly_social, rec) in await asyncio.gather(
+            *table_gather):
+        res[rec[0]] = (posts, smi, social, friendly, friendly_smi, friendly_social)
+    return res
 
 
 async def get_session_result(thread_id, _from, _to, referenceFilter, network_id, user_id):
     async with httpx.AsyncClient() as session:
         session = await login(session)
 
-        (posts, smi, social, friendly), names = await asyncio.gather(
+        (posts, smi, social, friendly, friendly_smi, friendly_social, referenceFilter), names = await asyncio.gather(
             get_posts(session, thread_id, _from, _to, network_id, referenceFilter),
             subects_names(session, referenceFilter, user_id)
         )
@@ -209,8 +231,8 @@ def convert_date(date):
 async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id, _sort=False):
     from app import UTC
     posts, smi, social, friendly, names = await get_session_result(thread_id, convert_date(_from), convert_date(_to),
-                                                         referenceFilter,
-                                                         network_id, user_id)
+                                                                   referenceFilter,
+                                                                   network_id, user_id)
     document = Document()
     obj_styles = document.styles
     obj_charstyle = obj_styles.add_style(STYLE, WD_STYLE_TYPE.CHARACTER)
