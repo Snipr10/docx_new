@@ -108,7 +108,7 @@ async def index_media(request: Request):
         network_id.append(int(id_))
     thread_id = int(body_json.get('thread_id'))
     if not network_id:
-        network_id = [1, 2, 3, 4, 5, 7, 8]
+        network_id = [1, 2, 3, 4, 5, 7, 8, 9, 10]
     try:
         document = await docx_media(thread_id, _from, _to,
                                     referenceFilter, network_id, body_json.get('user_id'), _sort)
@@ -941,7 +941,7 @@ async def get_trust(session, periods_data, sub, thread_id, reference_ids):
         try:
             tables = []
 
-            network_ids = [1, 2, 3, 5, 7, 8]
+            network_ids = [1, 2, 3, 5, 7, 8, 9, 10]
 
             table_gather = []
 
@@ -1078,7 +1078,7 @@ async def post_static(session, reference_id, thread_id, periods_data, chart_name
         "thread_id": thread_id,
         "from": periods_data.get("_from_data"),
         "to": periods_data.get("_to_data"),
-        "filter": {"network_id": [1, 2, 3, 4, 5, 7, 8],
+        "filter": {"network_id": [1, 2, 3, 4, 5, 7, 8, 9, 10],
                    "referenceFilter": [reference_id]}
     }
     response = await post(session, STATISTIC_TRUST_GRAPH, payload)
