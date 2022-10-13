@@ -698,6 +698,8 @@ async def get_trust_stat(session, thread_id, reference_ids, periods_data, networ
         }
         response = await post(session, GET_TRUST_URL, payload)
 
+        if response.status_code == 405:
+            return []
         return response.json()
     except Exception as e:
         logger.error(f"get_trust_stat {e}")
