@@ -12,9 +12,11 @@ DOMAIN_URL = os.getenv("DOMAIN_URL", "https://api.glassen-it.com")
 if DOMAIN_URL == "https://api.glassen-it.com":
     login_l = "java_api"
     password_p = "4yEcwVnjEH7D"
+    NETWORK_IDS = [1, 2, 3, 4, 5, 7, 8, 9, 10]
 else:
     login_l = "superadmin"
     password_p = "superadmin"
+    NETWORK_IDS = [1, 2, 4, 5, 8, 9, 10]
 
 LOGIN_URL = os.getenv("LOGIN_URL", f"{DOMAIN_URL}/component/socparser/authorization/login")
 SUBECT_URL = os.getenv("SUBECT_URL", f"{DOMAIN_URL}/component/socparser/users/getreferences")
