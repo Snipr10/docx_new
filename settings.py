@@ -36,6 +36,14 @@ THREAD_STATS = os.getenv("THREAD_STATS", f"{DOMAIN_URL}/component/socparser/stat
 THREAD_DATA = os.getenv("THREAD_DATA", f"{DOMAIN_URL}/component/socparser/thread/additional_info")
 OWNERS_TOP = os.getenv("OWNERS_TOP", f"{DOMAIN_URL}/component/socparser/stats/getOwnersTopByPostCount")
 
+GET_RESOURCES_STATS = f"{DOMAIN_URL}/component/socparser/stats/getsourcestats"
+GET_ADDITIONAL_INFO = f"{DOMAIN_URL}/component/socparser/thread/additional_info"
+GET_TRUST_DAILY = f"{DOMAIN_URL}/component/socparser/stats/trustdaily"
+GET_STATS = f"{DOMAIN_URL}/component/socparser/stats"
+GET_AGES = f"{DOMAIN_URL}/component/socparser/stats/ages"
+GET_CITY = f"{DOMAIN_URL}/component/socparser/thread/getcitytop"
+GET_OWNER_TOP = f"{DOMAIN_URL}/component/socparser/stats/getOwnersTopByPostCount"
+GET_POST_TOP = f"{DOMAIN_URL}/component/socparser/content/getposttoptrust"
 
 def print_settings(logger: logging.Logger) -> None:
     # Note: Do not log sensitive information here like username, password, and api keys and secrets.
