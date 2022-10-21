@@ -89,6 +89,35 @@ async def index(request: Request):
     return "Что-то пошло не так"
 
 
+@app.post('/get_new_report')
+async def new_report(request: Request):
+    from new_report.new_report import prepare_report
+
+    body_json = await request.json()
+
+    _from = body_json.get('from')
+    _to = body_json.get('to')
+    thread_id = int(body_json.get('thread_id'))
+    attempt = 0
+    max = 3
+    while attempt < max:
+        try:
+            document = await prepare_report(thread_id, _from, _to, body_json.get('login'), body_json.get('password'))
+            f = BytesIO()
+
+            document.save(f)
+            f.seek(0)
+
+            response = StreamingResponse(f, media_type="text/docx")
+            response.headers["Content-Disposition"] = "attachment; filename=report.docx"
+            attempt = max
+            return response
+        except Exception as e:
+            attempt += 1
+            logger.error(f"index {e}")
+    return "Что-то пошло не так"
+
+
 @app.post('/get_publication_summary')
 async def index_media(request: Request):
     body_json = await request.json()
