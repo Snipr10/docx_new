@@ -175,6 +175,8 @@ def add_triple_hart(document, cat, like_, repost_, comment_):
 def get_list_(_list):
     all = sum(_list)
     res = []
+    if all ==0:
+        return _list
     for l in _list:
         res.append(f"{l / all:.{3}f}")
     return res
@@ -456,8 +458,7 @@ def add_table_pril(document, items):
             row_cells[1].text = item['network_name']
         row_cells[2].text = item['author']
         add_hyperlink(row_cells[3].paragraphs[0], item['url'], item['url'], None, True)
-
-        row_cells[4].text = datetime.datetime.strptime(item['created_date'], DEFAULT_DATE_FORMAT).strftime("%d.%m.%Y")
+        row_cells[4].text = get_date(item['created_date']).strftime("%d.%m.%Y")
         row_cells[5].text = get_str_int(item['attendance'])
         for i in range(6):
             row_cells[i].style = STYLE
@@ -525,7 +526,10 @@ def add_hyperlink(paragraph, url, text, color, underline, is_italic=False):
 
 
 def get_date(date):
-    return datetime.datetime.strptime(date, DEFAULT_DATE_FORMAT)
+    try:
+        return datetime.datetime.strptime(date, DEFAULT_DATE_FORMAT)
+    except Exception:
+        return datetime.datetime.strptime(date, "%Y-%m-%d")
 
 
 DATES = {
@@ -811,8 +815,9 @@ async def prepare_report(thread_id, _from, _to, _login, _password):
             spb += int(c['users'])
         else:
             another += int(c['users'])
+    res_active_user  = 0 if another + spb == 0 else int((spb * 100) / (another + spb))
     new_paragraph(document,
-                  f"""Около {int((spb * 100) / (another + spb))}% активной аудитории располагается в Санкт-Петербурге."""
+                  f"""Около {res}% активной аудитории располагается в Санкт-Петербурге."""
                   )
     add_pie_city(document, spb, another)
 
@@ -852,7 +857,7 @@ async def prepare_report(thread_id, _from, _to, _login, _password):
                   f"""Наиболее активными источниками СМИ (информационные сайты) являются {smi_text},. Активными источниками социальных сетей стали сообщества {social_text}.""")
 
     new_paragraph(document,
-                  f"""Наиболее активной аудиторией, отреагировавшей на публикации отчетного периода на тему, по возрастному критерию являются пользователи. По гендерному критерию более активными являются {res} с небольшим перевесом. {int(spb * 100 / (another + spb))}% активной аудитории располагается в Санкт-Петербурге.
+                  f"""Наиболее активной аудиторией, отреагировавшей на публикации отчетного периода на тему, по возрастному критерию являются пользователи. По гендерному критерию более активными являются {res} с небольшим перевесом. {res_active_user}% активной аудитории располагается в Санкт-Петербурге.
  """)
     p = new_paragraph(document,
                       f"""Приложение 1. ТОП-10 публикаций за сутки за период {from_date.day}  по {to_date.day} {DATES[to_date.month]} {to_date.year}   года""")
