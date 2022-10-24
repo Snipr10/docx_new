@@ -555,7 +555,7 @@ def get_str_int(x):
 
 async def prepare_report(thread_id, _from, _to, _login, _password):
     async with httpx.AsyncClient() as session:
-        await login(session, _login, _password)
+        await login(session)
         try:
             top_post, additional_info, json_stats, (count, res_dict, trust_daily), likes_stats, comments_stats, \
             reposts_stats, ages, city, top_smi, top_social = await asyncio.gather(
