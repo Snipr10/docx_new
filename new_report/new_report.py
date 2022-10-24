@@ -109,8 +109,8 @@ def add_pie_chart(document, data):
 
 
 def add_double_chart(document, dates, smi, social):
-    import locale
-    locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
+    # import locale
+    # locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
 
     date_str = []
     for d in dates:
