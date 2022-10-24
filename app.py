@@ -113,6 +113,7 @@ async def new_report(request: Request):
             attempt = max
             return response
         except Exception as e:
+            return str(e)
             attempt += 1
             logger.error(f"index {e}")
     return "Что-то пошло не так"

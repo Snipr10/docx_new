@@ -573,6 +573,7 @@ async def prepare_report(thread_id, _from, _to, _login, _password):
             )
         except Exception as e:
             print(e)
+            raise e
     document = Document("new_report/test.docx")
 
     obj_styles = document.styles
