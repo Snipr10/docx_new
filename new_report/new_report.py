@@ -1,4 +1,6 @@
 import datetime
+
+import dateutil
 import docx
 import traceback
 import asyncio
@@ -529,7 +531,10 @@ def get_date(date):
     try:
         return datetime.datetime.strptime(date, DEFAULT_DATE_FORMAT)
     except Exception:
-        return datetime.datetime.strptime(date, "%Y-%m-%d")
+        try:
+            return datetime.datetime.strptime(date, "%Y-%m-%d")
+        except Exception:
+            return dateutil.parser.parse(date)
 
 
 DATES = {
