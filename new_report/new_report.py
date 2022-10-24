@@ -115,7 +115,7 @@ def add_double_chart(document, dates, smi, social):
     date_str = []
     for d in dates:
         d_date_time = datetime.datetime.strptime(d, "%Y-%m-%d")
-        date_str.append(d_date_time.strftime('%d-%b'))
+        date_str.append(f"{d_date_time.day}-{MONTHS[d_date_time.month]}")
 
     chart_data = CategoryChartData()
     chart_data.categories = date_str
@@ -152,7 +152,7 @@ def add_triple_hart(document, cat, like_, repost_, comment_):
     date_str = []
     for d in cat:
         d_date_time = datetime.datetime.strptime(d, "%Y-%m-%d")
-        date_str.append(d_date_time.strftime('%d-%b'))
+        date_str.append(f"{d_date_time.day}-{MONTHS[d_date_time.month]}")
     chart_data = CategoryChartData()
     chart_data.categories = date_str
     chart_data.add_series('Лайки', like_)
@@ -550,6 +550,22 @@ DATES = {
     10: "октября",
     11: "ноября",
     12: "декабря",
+
+}
+
+MONTHS = {
+    1: "янв",
+    2: "фев",
+    3: "мар",
+    4: "апр",
+    5: "мая",
+    6: "июня",
+    7: "июля",
+    8: "авu",
+    9: "сен",
+    10: "окт",
+    11: "ноя",
+    12: "дек",
 
 }
 
