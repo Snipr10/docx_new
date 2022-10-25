@@ -124,8 +124,8 @@ def add_double_chart(document, dates, smi, social):
     x, y, cx, cy = Inches(-1.0), Inches(0), Inches(6.55), Inches(3.3)
 
     chart = document.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data)
-    change_color(chart.plots[0].series[0], RGBColor(228, 108, 10))
-    change_color(chart.plots[0].series[1], RGBColor(23, 55, 94))
+    change_color(chart.plots[0].series[1], RGBColor(228, 108, 10))
+    change_color(chart.plots[0].series[0], RGBColor(23, 55, 94))
 
     update_chart_style(chart)
     p = document.paragraphs[-1].add_run("Рисунок 2. Динамика публикаций по предоставленным источникам",
@@ -578,23 +578,29 @@ async def prepare_report(thread_id, _from, _to, _login, _password):
     async with httpx.AsyncClient() as session:
         await login(session)
         try:
+            _from_date = _from
+            if len(_from) < 11:
+                _from_date += " " + "00:00:00"
+            _to_date = _to
+            if len(_to) < 11:
+                _to_date += " " + "23:59:59"
             top_post, additional_info, json_stats, (count, res_dict, trust_daily), likes_stats, comments_stats, \
             reposts_stats, ages, city, top_smi, top_social = await asyncio.gather(
-                get_post_top(session, thread_id, _from, _to),
+                get_post_top(session, thread_id, _from_date, _to_date),
                 get_additional_info(session, thread_id),
-                getSourceStats(session, thread_id, _from, _to),
-                get_trustdaily(session, thread_id, _from, _to),
-                get_stats(session, thread_id, _from, _to, "likes"),
-                get_stats(session, thread_id, _from, _to, "comments"),
-                get_stats(session, thread_id, _from, _to, "reposts"),
-                get_ages(session, thread_id, _from, _to),
-                get_city(session, thread_id, _from, _to),
-                get_top(session, thread_id, _from, _to, "smi"),
-                get_top(session, thread_id, _from, _to, "social")
+                getSourceStats(session, thread_id, _from_date, _to_date),
+                get_trustdaily(session, thread_id, _from_date, _to_date),
+                get_stats(session, thread_id, _from_date, _to_date, "likes"),
+                get_stats(session, thread_id, _from_date, _to_date, "comments"),
+                get_stats(session, thread_id, _from_date, _to_date, "reposts"),
+                get_ages(session, thread_id, _from_date, _to_date),
+                get_city(session, thread_id, _from_date, _to_date),
+                get_top(session, thread_id, _from_date, _to_date, "smi"),
+                get_top(session, thread_id, _from_date, _to_date, "social")
             )
         except Exception as e:
-            print(e)
-            raise e
+            raise Exception(str(e))
+
     document = Document("new_report/test.docx")
 
     obj_styles = document.styles
