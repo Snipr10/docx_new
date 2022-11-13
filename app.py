@@ -1011,13 +1011,15 @@ async def get_trust_res_net_social_range(session, network_ids, thread_id, refere
 async def get_trust_for_sub(session, reference_id, network_ids, title, periods_data, thread_id):
     try:
         table = None
+        networks_without_g = network_ids.copy()
+        networks_without_g.remove(4)
 
         res_net_social_range, res_net_gs_range, res_net_social_pos_neu, res_net_gs_range_pos_neu, res_net_social_neg, res_net_gs_range_neg = await asyncio.gather(
-            get_trust_res_net_social_range(session, network_ids, thread_id, reference_id, periods_data),
+            get_trust_res_net_social_range(session, networks_without_g, thread_id, reference_id, periods_data),
             get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, None),
-            get_trust_stat(session, thread_id, reference_id, periods_data, network_ids, 5, False),
+            get_trust_stat(session, thread_id, reference_id, periods_data, networks_without_g, 5, False),
             get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, False),
-            get_trust_stat(session, thread_id, reference_id, periods_data, network_ids, 5, True),
+            get_trust_stat(session, thread_id, reference_id, periods_data, networks_without_g, 5, True),
             get_trust_stat(session, thread_id, reference_id, periods_data, [4], 5, True)
         )
 
