@@ -50,6 +50,9 @@ async def login(session, login=login_l, password=password_p):
             "password": password
         }
         response = await post(session, LOGIN_URL, payload)
+        logger.error(f"login {response}")
+        logger.error(f"login {response.status_code}")
+        logger.error(f"login {response.text}")
 
         if response.status_code != 200:
             logger.error(f"login {response}")
