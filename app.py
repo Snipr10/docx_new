@@ -1114,8 +1114,10 @@ async def post_static(session, reference_id, thread_id, periods_data, chart_name
         "filter": {"network_id": NETWORK_IDS,
                    "referenceFilter": [reference_id]}
     }
-    response = await post(session, STATISTIC_TRUST_GRAPH, payload)
-
+    try:
+        response = await post(session, STATISTIC_TRUST_GRAPH, payload)
+    except Exception as e:
+        pass
     return response.json(), chart_name
 
 
