@@ -67,6 +67,8 @@ async def login(session, login=login_l, password=password_p):
         if response.status_code != 200:
             logger.error(f"login {response}")
             raise Exception("can not login")
+        logger.error(f"login success {login}")
+
     return session
 
 
