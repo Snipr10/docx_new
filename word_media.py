@@ -30,21 +30,31 @@ DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 async def login(session, login=login_l, password=password_p):
     try:
         from app import COOKIES
-        if len(COOKIES) == 0 or COOKIES[0].get("date") < datetime.today() - timedelta(minutes=10):
-            payload = {
-                "login": login,
-                "password": password
-            }
-            response = await post(session, LOGIN_URL, payload)
+        # if len(COOKIES) == 0 or COOKIES[0].get("date") < datetime.today() - timedelta(minutes=10):
+        #     payload = {
+        #         "login": login,
+        #         "password": password
+        #     }
+        #     response = await post(session, LOGIN_URL, payload)
+        #
+        #     if response.status_code != 200:
+        #         logger.error(f"login {response}")
+        #
+        #         raise Exception("can not login")
+        #     COOKIES.clear()
+        #     COOKIES.append({"date": datetime.now(), "cookies": session.cookies})
+        # else:
+        #     session.cookies = COOKIES[0].get("cookies")
+        payload = {
+            "login": login,
+            "password": password
+        }
+        response = await post(session, LOGIN_URL, payload)
 
-            if response.status_code != 200:
-                logger.error(f"login {response}")
+        if response.status_code != 200:
+            logger.error(f"login {response}")
 
-                raise Exception("can not login")
-            COOKIES.clear()
-            COOKIES.append({"date": datetime.now(), "cookies": session.cookies})
-        else:
-            session.cookies = COOKIES[0].get("cookies")
+            raise Exception("can not login")
     except Exception as e:
         logger.error(f"login 1 {e}")
 
