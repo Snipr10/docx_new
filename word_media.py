@@ -56,8 +56,8 @@ async def login(session, login=login_l, password=password_p):
 
         if response.status_code != 200:
             logger.error(f"login {response}")
-
             raise Exception("can not login")
+
     except Exception as e:
         logger.error(f"login 1 {e}")
 
@@ -71,6 +71,9 @@ async def login(session, login=login_l, password=password_p):
             logger.error(f"login {response}")
             raise Exception("can not login")
         logger.error(f"login success {login}")
+    for v in list(session.cookies.jar._cookies.values())[0].values():
+        for k, i in v.items():
+            session.cookies.set(i.name, i.value)
 
     return session
 
