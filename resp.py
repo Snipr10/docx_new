@@ -19,9 +19,10 @@ async def post(session, url, body):
                 response = await this_session.post(url, timeout=TIMEOUT)
         except Exception as e:
             try:
+                logger.error(f"post {url}")
                 logger.error(f"post {e} {response.text} {response.status_code}")
             except Exception as e:
-                logger.error(f"post {e}")
+                logger.error(f"post {e} {url} {body}")
         try:
             if response.status_code == 403:
                 response = None
