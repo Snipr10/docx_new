@@ -8,7 +8,7 @@ load_dotenv()
 load_dotenv(".version")
 
 
-DOMAIN_URL = os.getenv("DOMAIN_URL", "https://api.glassen-it.com")
+DOMAIN_URL = os.getenv("DOMAIN", "https://api.glassen-it.com")
 login_l = "java_api"
 password_p = "4yEcwVnjEH7D"
 
