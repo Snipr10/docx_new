@@ -199,6 +199,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         await login(session, login_user, password)
 
         today_all = datetime.today() + timedelta(hours=UTC)
+        logger.error(f"today_all")
 
         if periods_data.get("period") == "day":
             today_all = datetime.today() + timedelta(hours=UTC)
@@ -221,6 +222,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
                 today_str = f"за период с {dateutil.parser.parse(periods_data['_from_data']).strftime('%d-%m-%Y')} по {dateutil.parser.parse(periods_data['_to_data']).strftime('%d-%m-%Y')}"
 
                 periods_data["_to_data"] = today_all.strftime('%Y-%m-%d %H:%M:%S')
+        logger.error(f"document")
 
         document = Document()
 
@@ -229,10 +231,14 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         obj_font = obj_charstyle.font
         obj_font.size = Pt(10.5)
         obj_font.name = STYLE
+        logger.error(f"add_title")
 
         add_title(document, today_str)
+        logger.error(f"sub")
 
         sub = await get_start_date(session)
+        logger.error(f"try sub")
+
         try:
 
             topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables(session, periods_data, sub,
