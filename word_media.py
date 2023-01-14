@@ -28,6 +28,7 @@ DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
 
 async def login(session, login=login_l, password=password_p):
+    uid = None
     try:
         from app import COOKIES
         # if len(COOKIES) == 0 or COOKIES[0].get("date") < datetime.today() - timedelta(minutes=10):
@@ -71,11 +72,12 @@ async def login(session, login=login_l, password=password_p):
             logger.error(f"login {response}")
             raise Exception("can not login")
         logger.error(f"login success {login}")
+        uid = response.json().get("uid")
     for v in list(session.cookies.jar._cookies.values())[0].values():
         for k, i in v.items():
             session.cookies.set(i.name, i.value)
 
-    return session
+    return session, uid
 
 
 async def get_cookies(session):
@@ -115,12 +117,15 @@ def add_title_data(title, name, data):
     title_run.font.size = Pt(12)
 
 
-async def subects_names(session, referenceFilter, user_id):
+async def subects_names(session, referenceFilter, user_id, uid):
     response = await post(session, SUBECT_URL, {
         "group_id": user_id,
         "is_user_id": 1
     })
-
+    response_2 = await post(session, SUBECT_URL, {
+        "group_id": uid,
+        "is_user_id": 1
+    })
     names = []
     try:
         res = []
@@ -129,6 +134,15 @@ async def subects_names(session, referenceFilter, user_id):
         for r in res:
             if r.get("id") in referenceFilter:
                 names.append(r.get("keyword"))
+        try:
+            for r in response_2.json():
+                res.extend(r['items'] or [])
+            for r in res:
+                if r.get("id") in referenceFilter:
+                    if r.get("keyword") not in names:
+                        names.append(r.get("keyword"))
+        except Exception:
+            pass
         return names
     except Exception as e:
         logger.error(f"subects_names {e}")
@@ -193,11 +207,12 @@ async def get_posts_info(session, thread_id, periods_data, referenceFilter):
 
 async def get_session_result(thread_id, _from, _to, referenceFilter, network_id, user_id):
     async with httpx.AsyncClient() as session:
-        session = await login(session)
-
+        session, uid = await login(session)
+        if uid is None:
+            uid = user_id
         (posts, smi, social, friendly, friendly_smi, friendly_social, referenceFilter), names = await asyncio.gather(
             get_posts(session, thread_id, _from, _to, network_id, referenceFilter),
-            subects_names(session, referenceFilter, user_id)
+            subects_names(session, referenceFilter, user_id, uid)
         )
         return posts, smi, social, friendly, names
 

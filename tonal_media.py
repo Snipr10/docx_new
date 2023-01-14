@@ -86,7 +86,7 @@ async def docx_tonal(thread_ids, _from, _to, iogv_name, types, smi_type):
 
 async def get_session_tonal_result(thread_id, _from, _to, types, smi_type):
     async with httpx.AsyncClient() as session:
-        session = await login(session)
+        session, uid = await login(session)
         try:
             await get_thread_name(session, thread_id)
         except Exception as e:
