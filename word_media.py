@@ -315,25 +315,25 @@ async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id
         posts.sort(key=lambda x: str(x['author']))
     for post in posts:
         post_paragraph = document.add_paragraph()
-        paragraph_run = post_paragraph.add_run(post['author'], style=STYLE)
+        paragraph_run = post_paragraph.add_run(post.get("author", ""), style=STYLE)
         paragraph_run.bold = True
         paragraph_run.font.size = Pt(12)
-        paragraph_run = post_paragraph.add_run(f" {dateutil.parser.parse(post['created_date']).strftime(DATE_FORMAT)}"
-                                               "\n ", style=STYLE)
+        paragraph_run = post_paragraph.add_run(f" {dateutil.parser.parse(post.get('created_date') or '').strftime(DATE_FORMAT)}"
+                                                   "\n ", style=STYLE)
         paragraph_run.font.size = Pt(12)
 
         paragraph_ilnk = document.add_paragraph()
-        url = post['uri']
+        url = post['uri'] or ''
         # if len(url) > 65:
-        #     url = url[:65]
+         #     url = url[:65]
         paragraph_link = paragraph_ilnk.add_run(url, style=STYLE)
         paragraph_link.font.size = Pt(12)
 
-        add_hyperlink_into_run(paragraph_ilnk, paragraph_link, post['uri'])
+        add_hyperlink_into_run(paragraph_ilnk, paragraph_link, post.get('uri') or '')
 
         if post['title']:
             post_paragraph_title = document.add_paragraph()
-            paragraph_title = post_paragraph_title.add_run(post['title'], style=STYLE)
+            paragraph_title = post_paragraph_title.add_run(post.get('title', ''), style=STYLE)
             paragraph_title.bold = True
             paragraph_title.font.size = Pt(12)
         if post.get("friendly"):
@@ -345,7 +345,7 @@ async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id
             post_paragraph_friendly.italic = True
 
         post_paragraph_text = document.add_paragraph()
-        cleantext = re.sub(CLEANR, '', post['text'])
+        cleantext = re.sub(CLEANR, '', post.get('text') or '')
         post_paragraph_text = post_paragraph_text.add_run(cleantext, style=STYLE)
         post_paragraph_text.font.size = Pt(12)
 
@@ -353,5 +353,4 @@ async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id
         hr.style.font.size = Pt(1)
 
         insertHR(hr)
-
     return document
