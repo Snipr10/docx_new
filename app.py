@@ -47,7 +47,28 @@ app = FastAPI()
 UTC = 3
 
 TIMEOUT = 7 * 60
-logger = logging.getLogger('foo-logger')
+# logger = logging.getLogger('foo-logger')
+
+import logging
+
+import rollbar
+from rollbar.contrib.fastapi import LoggerMiddleware
+from rollbar.logger import RollbarHandler
+
+# Initialize Rollbar SDK with your server-side access token
+rollbar.init(
+    'd11e000ae6694189bfb39896cc4bcb6f',
+    environment='staging',
+    handler='async',
+)
+
+# Set root logger to log DEBUG and above
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+rollbar_handler = RollbarHandler()
+rollbar_handler.setLevel(logging.ERROR)
+logger.addHandler(rollbar_handler)
+app.add_middleware(LoggerMiddleware)  # should be added as the last middleware
 
 
 @app.post('/get_report')
@@ -84,8 +105,8 @@ async def index(request: Request):
             attempt = max
             return response
         except Exception as e:
+            logger.error(f'get_report {e}')
             attempt += 1
-            logger.error(f"index {e}")
     return "Что-то пошло не так"
 
 
@@ -113,9 +134,8 @@ async def new_report(request: Request):
             attempt = max
             return response
         except Exception as e:
-            return str(e)
+            logger.error(f'get_new_report {e}')
             attempt += 1
-            logger.error(f"index {e}")
     return "Что-то пошло не так"
 
 
@@ -150,7 +170,7 @@ async def index_media(request: Request):
         response.headers["Content-Disposition"] = "attachment; filename=report.docx"
         return response
     except Exception as e:
-        logger.error(f"index_media {e}")
+        logger.error(f'get_publication_summary {e}')
         return "Что-то пошло не так"
 
 
@@ -185,7 +205,7 @@ async def tonal(request: Request):
         response.headers["Content-Disposition"] = "attachment; filename=report.docx"
         return response
     except Exception as e:
-        logger.error(f"index_media {e}")
+        logger.error(f'get_report/tonal {e}')
         return "Что-то пошло не так"
 
 
@@ -245,7 +265,8 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
                                                                                           thread_id,
                                                                                           reference_ids)
         except Exception as e:
-            logger.error(f"get_tables {e}")
+            logger.error(f'creater {e}')
+
             try:
                 topics_tables.cancel()
             except Exception as e:
