@@ -17,3 +17,4 @@ httpx==0.22.0
 fastapi==0.74.1
 uvicorn==0.17.5
 python-dotenv==0.21.0
+rollbar==0.16.3
