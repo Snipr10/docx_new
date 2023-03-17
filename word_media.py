@@ -13,10 +13,12 @@ from docx.shared import Inches, Pt, RGBColor
 from docx import Document
 from docx.oxml.shared import OxmlElement
 from docx.oxml.ns import qn
+
+
+
 from resp import post
 from settings import LOGIN_URL, SUBECT_URL, STATISTIC_POST_URL, login_l, password_p, NETWORK_IDS
 
-logger = logging.getLogger('foo-logger')
 
 CLEANR = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
 
@@ -28,6 +30,10 @@ DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
 
 async def login(session, login=login_l, password=password_p):
+    try:
+        from app import logger
+    except Exception:
+        logger = logging.getLogger('foo-logger')
     uid = None
     try:
         from app import COOKIES
@@ -145,6 +151,10 @@ async def subects_names(session, referenceFilter, user_id, uid):
             pass
         return names
     except Exception as e:
+        try:
+            from app import logger
+        except Exception:
+            logger = logging.getLogger('foo-logger')
         logger.error(f"subects_names {e}")
         return []
 
