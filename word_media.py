@@ -159,7 +159,9 @@ async def subects_names(session, referenceFilter, user_id, uid):
         return []
 
 
-async def get_posts(session, thread_id, _from, _to, network_id, referenceFilter):
+async def get_posts(session, thread_id, _from, _to, network_id, referenceFilter, friendly_ids=None, trustoption=None):
+    if friendly_ids is None:
+        friendly_ids = []
     limit = 200
     start = 0
     posts = []
@@ -169,6 +171,8 @@ async def get_posts(session, thread_id, _from, _to, network_id, referenceFilter)
             "from": _from,
             "to": _to,
             "limit": limit, "start": start, "sort": {"type": "date", "order": "desc", "name": "dateDown"},
+            "friendly": friendly_ids,
+            "trustoption": trustoption,
             "filter": {"network_id": network_id,
                        "referenceFilter": referenceFilter, "repostoption": "whatever"}
         }
@@ -215,13 +219,13 @@ async def get_posts_info(session, thread_id, periods_data, referenceFilter):
     return res
 
 
-async def get_session_result(thread_id, _from, _to, referenceFilter, network_id, user_id):
+async def get_session_result(thread_id, _from, _to, referenceFilter, network_id, user_id, friendly_ids, trustoption):
     async with httpx.AsyncClient() as session:
         session, uid = await login(session)
         if uid is None:
             uid = user_id
         (posts, smi, social, friendly, friendly_smi, friendly_social, referenceFilter), names = await asyncio.gather(
-            get_posts(session, thread_id, _from, _to, network_id, referenceFilter),
+            get_posts(session, thread_id, _from, _to, network_id, referenceFilter, friendly_ids, trustoption),
             subects_names(session, referenceFilter, user_id, uid)
         )
         return posts, smi, social, friendly, names
@@ -271,11 +275,11 @@ def convert_date(date):
         return dateutil.parser.parse(date).date().strftime("%d-%m-%Y")
 
 
-async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id, _sort=False):
+async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id, friendly_ids, trustoption=None, _sort=False):
     from app import UTC
     posts, smi, social, friendly, names = await get_session_result(thread_id, convert_date(_from), convert_date(_to),
                                                                    referenceFilter,
-                                                                   network_id, user_id)
+                                                                   network_id, user_id, friendly_ids, trustoption)
     document = Document()
     obj_styles = document.styles
     obj_charstyle = obj_styles.add_style(STYLE, WD_STYLE_TYPE.CHARACTER)

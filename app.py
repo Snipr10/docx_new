@@ -158,9 +158,11 @@ async def index_media(request: Request):
     thread_id = int(body_json.get('thread_id'))
     if not network_id:
         network_id = NETWORK_IDS
+    friendly_ids = body_json.get('friendly', [])
+    trustoption = body_json.get('trustoption', None)
     try:
         document = await docx_media(thread_id, _from, _to,
-                                    referenceFilter, network_id, body_json.get('user_id'), _sort)
+                                    referenceFilter, network_id, body_json.get('user_id'), friendly_ids, trustoption, _sort)
 
         f = BytesIO()
         document.save(f)
