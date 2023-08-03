@@ -4,6 +4,7 @@ import docx
 import httpx as httpx
 import traceback
 
+import lxml
 import uvicorn
 from dateutil.parser import parse
 from datetime import datetime
@@ -27,7 +28,9 @@ from pptx.util import Pt, Inches
 from pptx.chart.data import CategoryChartData
 from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
 from starlette.responses import StreamingResponse
+from docx.shared import Mm
 
+from mock_data import get_tables_mocks
 from resp import post
 from tonal_media import docx_tonal
 from word_media import docx_media, login, convert_date, get_posts_info
@@ -162,7 +165,8 @@ async def index_media(request: Request):
     trustoption = body_json.get('trustoption', None)
     try:
         document = await docx_media(thread_id, _from, _to,
-                                    referenceFilter, network_id, body_json.get('user_id'), friendly_ids, trustoption, _sort)
+                                    referenceFilter, network_id, body_json.get('user_id'), friendly_ids, trustoption,
+                                    _sort)
 
         f = BytesIO()
         document.save(f)
@@ -246,26 +250,30 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
                 periods_data["_to_data"] = today_all.strftime('%Y-%m-%d %H:%M:%S')
         logger.error(f"document")
 
-        document = Document()
+        document = Document("test0.docx")
 
-        obj_styles = document.styles
-        obj_charstyle = obj_styles.add_style(STYLE, WD_STYLE_TYPE.CHARACTER)
-        obj_font = obj_charstyle.font
-        obj_font.size = Pt(10.5)
-        obj_font.name = STYLE
-        logger.error(f"add_title")
-
-        add_title(document, today_str)
         logger.error(f"sub")
-
         sub = await get_start_date(session)
         logger.error(f"try sub")
 
         try:
+            while True:
+                document.paragraphs[0]._element.getparent().remove(document.paragraphs[0]._element)
+        except Exception:
+            pass
+        try:
 
-            topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables(session, periods_data, sub,
-                                                                                          thread_id,
-                                                                                          reference_ids)
+            # topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables(session,
+            #                                                                                           periods_data, sub,
+            #                                                                                           thread_id,
+            #                                                                                           reference_ids)
+            topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables_mocks(session,
+                                                                                                            periods_data,
+                                                                                                            sub,
+                                                                                                            thread_id,
+                                                                                                            reference_ids)
+
+
         except Exception as e:
             logger.error(f'creater {e}')
 
@@ -288,12 +296,16 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
             raise e
 
         table_number = 1
+        logger.error(f"add_title")
 
+        add_title(document, today_str, [i[0] for i in trust_tables])
         add_table_title = True
         for topics_table_title, topics_table_data, reference_id in topics_tables:
             if add_table_title:
-                add_title_text(document, "Главные темы публикаций в СМИ", True)
-            add_table1(document, table_number, topics_table_title, topics_table_data, today_str, add_table_title, posts_info)
+                document.add_page_break()
+                add_title_text(document, "Главные темы публикаций в СМИ", True, docx.enum.text.WD_ALIGN_PARAGRAPH.LEFT)
+            add_table1(document, table_number, topics_table_title, topics_table_data, today_str, add_table_title,
+                       posts_info)
             table_number += 1
             add_table_title = False
 
@@ -302,7 +314,8 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
             if add_table_title:
                 document.add_page_break()
                 add_title_text(document, "\n Статистика по публикациям с упоминанием субъектов", True)
-            add_table2(document, table_number, statistic_table_date, statistic_table_title, today_str, add_table_title, posts_info)
+            add_table2(document, table_number, statistic_table_date, statistic_table_title, today_str, add_table_title,
+                       posts_info)
             table_number += 1
             add_table_title = False
 
@@ -385,21 +398,60 @@ def update_pagagraphs(paragraphs):
             font.name = STYLE
 
 
-def add_title(document, today):
+def parag_format(parag):
+    fmt = parag.paragraph_format
+    # fmt.first_line_indent = Mm(-15)
+    fmt.right_indent = Mm(-25)
+    fmt.left_indent = Mm(-15)
+    fmt.space_before = Mm(15)
+    fmt.space_after = Mm(10)
+    fmt.first_line_indent = Mm(-15)
+
+
+def add_title(document, today, sub):
     add_title_text(document,
-                   f'Отчет по публикациям в Личном Кабинете Мониторинговой системы {today},'
-                   f' созданный на основании публикаций СМИ и социальных сетей',
+                   '\n\n',
                    False
                    )
 
-
-def add_title_text(document, text, is_bold):
     parag_title = document.add_paragraph()
+
+    parag_format(parag_title)
+    fmt = parag_title.paragraph_format
+    parag_title.add_run(
+        "\n"
+        "Мониторинг информации,\n"
+        "распространяемой\n"
+        "в информационно-телекоммуникационной\n"
+        "сети Интернет, по тематикам,\n"
+        "определяемым пресс-секретарями\n"
+        "исполнительных органов\n"
+        "государственной власти Санкт-Петербурга\n",
+        style=STYLE
+    )
+    parag_title.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.LEFT
+    parag_title.runs[0].font.size = Pt(28)
+    parag_title.add_run("Отчет по субъекту/событию\n" + ", ".join([f"«{s}»" for s in sub]) + "\n" + today,
+                        style=STYLE)
+    parag_title.runs[-1].font.size = Pt(22)
+
+
+def add_title_text(document, text, is_bold, alignment=docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER):
+    parag_title = document.add_paragraph()
+
+    fmt = parag_title.paragraph_format
+    # fmt.first_line_indent = Mm(-15)
+    fmt.right_indent = Mm(-25)
+    fmt.space_before = Mm(15)
+    fmt.space_after = Mm(10)
+    # fmt.first_line_indent = Mm(-10)
+    fmt.left_indent = Mm(0)
+
     parag_title.add_run(
         text,
         style=STYLE
     )
-    parag_title.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER
+    parag_title.alignment = alignment
     if is_bold:
         parag_title.runs[-1].bold = True
 
@@ -435,32 +487,49 @@ def set_left(cell):
     cell.paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.LEFT
 
 
+def indent_table(table, indent):
+    # noinspection PyProtectedMember
+    tbl_pr = table._element.xpath('w:tblPr')
+    if tbl_pr:
+        e = OxmlElement('w:tblInd')
+        e.set(qn('w:w'), str(indent))
+        e.set(qn('w:type'), 'dxa')
+        tbl_pr[0].append(e)
+
+
 def add_table1(document, table_number, header, records, today, add_table_title, posts_info):
     parag_table_1 = document.add_paragraph()
-    text = f' Таблица {table_number} - Главные темы публикаций СМИ с упоминаниями '
+    text = f' Таблица {table_number} - Главные темы публикаций СМИ '
     if not add_table_title:
         text = "\n" + text
     parag_table_1.add_run(
         text,
         style=STYLE
     )
-    add_name(parag_table_1, header)
+    # add_name(parag_table_1, header)
     parag_table_1.add_run(
-        f' {today}',
+        f'\n {today}',
         style=STYLE
     )
+    parag_table_1.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.RIGHT
+    for run in parag_table_1.runs:
+        run.italic = True
+
+    parag_format(parag_table_1)
+
     parag_table_1.paragraph_format.space_after = Inches(0)
-    parag_table_1.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.JUSTIFY
+    from copy import deepcopy
 
     table = document.add_table(rows=0, cols=6)
-    table.autofit = False
-    table.allow_autofit = False
-    table.columns[0].width = Inches(0.3)
-    table.columns[1].width = Inches(2.45)
-    table.columns[2].width = Inches(1.0)
-    table.columns[3].width = Inches(0.7)
-    table.columns[4].width = Inches(1.0)
-    table.columns[5].width = Inches(0.7)
+    document.tables[0] = (deepcopy(Document("report.docx").tables[0]))
+    # table.autofit = False
+    # table.allow_autofit = False
+    # table.columns[0].width = Inches(0.7)
+    # table.columns[1].width = Inches(2.45)
+    # table.columns[2].width = Inches(1.0)
+    # table.columns[3].width = Inches(0.7)
+    # table.columns[4].width = Inches(1.0)
+    # table.columns[5].width = Inches(0.7)
 
     table.style = 'TableGrid'
 
@@ -473,11 +542,11 @@ def add_table1(document, table_number, header, records, today, add_table_title, 
     hdr_cells[4].text = "Всего публикаций в теме"
     hdr_cells[5].text = "Охват всех публикаций"
 
-    set_center(hdr_cells[2])
-    set_center(hdr_cells[3])
-    set_center(hdr_cells[4])
-    set_center(hdr_cells[5])
-    set_cell_vertical_alignment(hdr_cells[1])
+    # set_center(hdr_cells[2])
+    # set_center(hdr_cells[3])
+    # set_center(hdr_cells[4])
+    # set_center(hdr_cells[5])
+    # set_cell_vertical_alignment(hdr_cells[1])
 
     i = 1
     max_count = 0
@@ -493,18 +562,30 @@ def add_table1(document, table_number, header, records, today, add_table_title, 
 
         row_cells[1].text = str(cell['title'])
         row_cells[0].text = str(i)
-        row_cells[0].alignment = WD_TABLE_ALIGNMENT.RIGHT
-        row_cells[0].paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.RIGHT
-
-        set_center(row_cells[2])
-        set_center(row_cells[3])
-        set_center(row_cells[4])
-        set_center(row_cells[5])
+        # row_cells[0].alignment = WD_TABLE_ALIGNMENT.RIGHT
+        # row_cells[0].paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.RIGHT
+        #
+        # set_center(row_cells[2])
+        # set_center(row_cells[3])
+        # set_center(row_cells[4])
+        # set_center(row_cells[5])
 
         i += 1
-    change_table_font(table)
-
-
+    # change_table_font(table)
+    # table.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.LEFT
+    # table.autofit = False
+    # table._element = Document("report.docx").tables[0]._element
+    # nsmap = table._element[0].nsmap  # For namespaces
+    # searchtag = '{%s}tblPr' % nsmap['w']  # w:tblPr
+    # mytag = '{%s}tblInd' % nsmap['w']  # w:tblInd
+    # myw = '{%s}w' % nsmap['w']  # w:w
+    # mytype = '{%s}type' % nsmap['w']  # w:type
+    # for elt in table._element:
+    #     if elt.tag == searchtag:
+    #         myelt = lxml.etree.Element(mytag)
+    #         myelt.set(myw, '-2')
+    #         # myelt.set(mytype, 'dxa')
+    #         myelt = elt.append(myelt)
 def add_table2(document, table_number, records, table_type, today, add_table_title, posts_info):
     parag_table = document.add_paragraph()
     text = f' Таблица {table_number}  - Общая статистика публикаций {table_type} с упоминаниями субъектов {today}'
@@ -1151,13 +1232,18 @@ async def post_static(session, reference_id, thread_id, periods_data, chart_name
 
 
 async def get_tables(session, periods_data, sub, thread_id, reference_ids):
-    trust_tables, topics_tables, statistic_tables, charts_data, posts_info = await asyncio.gather(
-        get_trust(session, periods_data, sub, thread_id, reference_ids),
-        add_topics(session, periods_data, sub, thread_id, reference_ids),
-        add_statistic(session, periods_data, sub, thread_id, reference_ids),
-        get_posts_statistic(session, periods_data, sub, thread_id, reference_ids),
-        get_posts_info(session, thread_id, periods_data, reference_ids)
-    )
+    trust_tables = await get_trust(session, periods_data, sub, thread_id, reference_ids)
+    topics_tables = await add_topics(session, periods_data, sub, thread_id, reference_ids)
+    statistic_tables = await  add_statistic(session, periods_data, sub, thread_id, reference_ids)
+    charts_data = await get_posts_statistic(session, periods_data, sub, thread_id, reference_ids)
+    posts_info = await get_posts_info(session, thread_id, periods_data, reference_ids)
+    # trust_tables, topics_tables, statistic_tables, charts_data, posts_info = await asyncio.gather(
+    #     get_trust(session, periods_data, sub, thread_id, reference_ids),
+    #     add_topics(session, periods_data, sub, thread_id, reference_ids),
+    #     add_statistic(session, periods_data, sub, thread_id, reference_ids),
+    #     get_posts_statistic(session, periods_data, sub, thread_id, reference_ids),
+    #     get_posts_info(session, thread_id, periods_data, reference_ids)
+    # )
 
     return topics_tables, statistic_tables, trust_tables, charts_data, posts_info
 
