@@ -218,7 +218,10 @@ async def tonal(request: Request):
 def _last_time(day):
     return datetime(day.year, day.month, day.day, 23, 59, 59).strftime('%Y-%m-%d %H:%M:%S')
 
-
+def delete_paragraph(paragraph):
+    p = paragraph._element
+    p.getparent().remove(p)
+    p._p = p._element = None
 async def creater(reference_ids, login_user, password, thread_id, periods_data):
     async with httpx.AsyncClient() as session:
 
@@ -256,11 +259,11 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         sub = await get_start_date(session)
         logger.error(f"try sub")
 
-        try:
-            while True:
-                document.paragraphs[0]._element.getparent().remove(document.paragraphs[0]._element)
-        except Exception:
-            pass
+        # try:
+        #     while True:
+        #         document.paragraphs[0]._element.getparent().remove(document.paragraphs[0]._element)
+        # except Exception:
+        #     pass
         try:
 
             # topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables(session,
@@ -300,27 +303,35 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
 
         add_title(document, today_str, [i[0] for i in trust_tables])
         add_table_title = True
+
         for topics_table_title, topics_table_data, reference_id in topics_tables:
-            if add_table_title:
-                document.add_page_break()
-                add_title_text(document, "Главные темы публикаций в СМИ", True, docx.enum.text.WD_ALIGN_PARAGRAPH.LEFT)
+
             add_table1(document, table_number, topics_table_title, topics_table_data, today_str, add_table_title,
-                       posts_info)
+                           posts_info)
             table_number += 1
             add_table_title = False
+        for p in document.paragraphs:
+            if 'Таблица n. Главные темы публикаций СМИ\n' in p.text:
+                delete_paragraph(p)
+                document.tables[table_number-1]._element.getparent().remove(document.tables[table_number-1]._element)
 
         add_table_title = True
         for statistic_table_title, statistic_table_date in statistic_tables:
-            if add_table_title:
-                document.add_page_break()
-                add_title_text(document, "\n Статистика по публикациям с упоминанием субъектов", True)
+
             add_table2(document, table_number, statistic_table_date, statistic_table_title, today_str, add_table_title,
                        posts_info)
             table_number += 1
             add_table_title = False
+        for p in document.paragraphs:
+            if "Таблица n. Общая статистика публикаций СМИ" in p.text or "Таблица n. Общая статистика публикаций в социальных сетях" in p.text:
+                delete_paragraph(p)
+                document.tables[table_number-1]._element.getparent().remove(document.tables[table_number-1]._element)
 
         chart_number = 1
         add_chart_title = True
+
+
+
         for statistic_chart_title, statist_chart_data in charts_data:
             if add_chart_title:
                 document.add_page_break()
@@ -409,31 +420,7 @@ def parag_format(parag):
 
 
 def add_title(document, today, sub):
-    add_title_text(document,
-                   '\n\n',
-                   False
-                   )
-
-    parag_title = document.add_paragraph()
-
-    parag_format(parag_title)
-    fmt = parag_title.paragraph_format
-    parag_title.add_run(
-        "\n"
-        "Мониторинг информации,\n"
-        "распространяемой\n"
-        "в информационно-телекоммуникационной\n"
-        "сети Интернет, по тематикам,\n"
-        "определяемым пресс-секретарями\n"
-        "исполнительных органов\n"
-        "государственной власти Санкт-Петербурга\n",
-        style=STYLE
-    )
-    parag_title.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.LEFT
-    parag_title.runs[0].font.size = Pt(28)
-    parag_title.add_run("Отчет по субъекту/событию\n" + ", ".join([f"«{s}»" for s in sub]) + "\n" + today,
-                        style=STYLE)
-    parag_title.runs[-1].font.size = Pt(22)
+    document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("1", ", ".join([f"«{s}»" for s in sub])).replace("2", today)
 
 
 def add_title_text(document, text, is_bold, alignment=docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER):
@@ -496,135 +483,81 @@ def indent_table(table, indent):
         e.set(qn('w:type'), 'dxa')
         tbl_pr[0].append(e)
 
-
+def add_whitespace(inter):
+    res = ''
+    iter = 0
+    for i in reversed(inter):
+        res = i + res
+        if iter == 2:
+            res = " " + res
+            iter = 0
+        else:
+            iter += 1
+    return res
 def add_table1(document, table_number, header, records, today, add_table_title, posts_info):
-    parag_table_1 = document.add_paragraph()
-    text = f' Таблица {table_number} - Главные темы публикаций СМИ '
-    if not add_table_title:
-        text = "\n" + text
-    parag_table_1.add_run(
-        text,
-        style=STYLE
-    )
-    # add_name(parag_table_1, header)
-    parag_table_1.add_run(
-        f'\n {today}',
-        style=STYLE
-    )
-    parag_table_1.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.RIGHT
-    for run in parag_table_1.runs:
-        run.italic = True
-
-    parag_format(parag_table_1)
-
-    parag_table_1.paragraph_format.space_after = Inches(0)
-    from copy import deepcopy
-
-    table = document.add_table(rows=0, cols=6)
-    document.tables[0] = (deepcopy(Document("report.docx").tables[0]))
-    # table.autofit = False
-    # table.allow_autofit = False
-    # table.columns[0].width = Inches(0.7)
-    # table.columns[1].width = Inches(2.45)
-    # table.columns[2].width = Inches(1.0)
-    # table.columns[3].width = Inches(0.7)
-    # table.columns[4].width = Inches(1.0)
-    # table.columns[5].width = Inches(0.7)
-
-    table.style = 'TableGrid'
-
-    hdr_cells = table.add_row().cells
-
-    hdr_cells[0].text = " "
-    hdr_cells[1].text = "Тема"
-    hdr_cells[2].text = "Публикаций с упоминанием субъекта"
-    hdr_cells[3].text = "Охват публикаций с упоминанием"
-    hdr_cells[4].text = "Всего публикаций в теме"
-    hdr_cells[5].text = "Охват всех публикаций"
-
-    # set_center(hdr_cells[2])
-    # set_center(hdr_cells[3])
-    # set_center(hdr_cells[4])
-    # set_center(hdr_cells[5])
-    # set_cell_vertical_alignment(hdr_cells[1])
-
+    index = 0
+    for i, p in enumerate(document.paragraphs):
+        if 'Таблица n. Главные темы публикаций СМИ\n' in p.text:
+            index = i
+            break
+    document.paragraphs[index].runs[1].text = str(table_number)
+    document.paragraphs[index].runs[2].text = document.paragraphs[index].runs[2].text.replace("за период", today)
+    table = document.tables[table_number-1]
     i = 1
     max_count = 0
     for cell in records:
         if max_count >= 20:
             break
         max_count += 1
-        row_cells = table.add_row().cells
-        row_cells[5].text = str(cell['total_attendance'])
-        row_cells[4].text = str(cell['total_posts'])
-        row_cells[3].text = str(cell['attendance'])
-        row_cells[2].text = str(cell['postcount'])
+        if max_count == 1:
+            row_cells = table.rows[1].cells
+        else:
+            row_cells = table.add_row().cells
+        row_cells[5].text = add_whitespace(str(cell['total_attendance']))
+        row_cells[4].text = add_whitespace(str(cell['total_posts']))
+        row_cells[3].text = add_whitespace(str(cell['attendance']))
+        row_cells[2].text = add_whitespace(str(cell['postcount']))
 
         row_cells[1].text = str(cell['title'])
-        row_cells[0].text = str(i)
-        # row_cells[0].alignment = WD_TABLE_ALIGNMENT.RIGHT
-        # row_cells[0].paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.RIGHT
-        #
-        # set_center(row_cells[2])
-        # set_center(row_cells[3])
-        # set_center(row_cells[4])
-        # set_center(row_cells[5])
+        row_cells[0].text = add_whitespace(str(i))
+        row_cells[1].alignment = WD_TABLE_ALIGNMENT.LEFT
+        row_cells[1].paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.LEFT
+        set_center(row_cells[0])
+        set_center(row_cells[2])
+        set_center(row_cells[3])
+        set_center(row_cells[4])
+        set_center(row_cells[5])
 
         i += 1
-    # change_table_font(table)
-    # table.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.LEFT
-    # table.autofit = False
-    # table._element = Document("report.docx").tables[0]._element
-    # nsmap = table._element[0].nsmap  # For namespaces
-    # searchtag = '{%s}tblPr' % nsmap['w']  # w:tblPr
-    # mytag = '{%s}tblInd' % nsmap['w']  # w:tblInd
-    # myw = '{%s}w' % nsmap['w']  # w:w
-    # mytype = '{%s}type' % nsmap['w']  # w:type
-    # for elt in table._element:
-    #     if elt.tag == searchtag:
-    #         myelt = lxml.etree.Element(mytag)
-    #         myelt.set(myw, '-2')
-    #         # myelt.set(mytype, 'dxa')
-    #         myelt = elt.append(myelt)
+
 def add_table2(document, table_number, records, table_type, today, add_table_title, posts_info):
-    parag_table = document.add_paragraph()
-    text = f' Таблица {table_number}  - Общая статистика публикаций {table_type} с упоминаниями субъектов {today}'
-    if not add_table_title:
-        text = "\n" + text
-    parag_table.add_run(
-        text,
-        style=STYLE
-    )
 
-    parag_table.paragraph_format.space_after = Inches(0)
-    parag_table.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.JUSTIFY
+    index = 0
+    for i, p in enumerate(document.paragraphs):
+        if 'СМИ' == table_type:
+            if "Таблица n. Общая статистика публикаций СМИ" in p.text:
+                index = i
+                break
+        else:
+            if "Таблица n. Общая статистика публикаций в социальных сетях" in p.text:
+                index = i
+                break
+    document.paragraphs[index].runs[1].text = str(table_number)
+    document.paragraphs[index].runs[2].text = document.paragraphs[index].runs[2].text.replace("за период", today)
+    try:
+        document.paragraphs[index].runs[3].text = document.paragraphs[index].runs[3].text.replace("за период", today)
+    except Exception:
+        pass
+    table = document.tables[table_number-1]
 
-    table = document.add_table(rows=1, cols=6)
-    table.style = 'TableGrid'
-    table.columns[0].width = Inches(2.25)
-    table.columns[1].width = Inches(0.8)
-    table.columns[2].width = Inches(0.8)
-    table.columns[3].width = Inches(0.8)
-    table.columns[4].width = Inches(0.8)
-    table.columns[5].width = Inches(0.8)
-
-    hdr_cells = table.rows[0].cells
-    hdr_cells[0].text = "Субъекты"
-    set_cell_vertical_alignment(hdr_cells[0])
-
-    hdr_cells[1].text = "Количество публикаций, всего"
-    set_center(hdr_cells[1])
-    table.rows[0].width = Inches(2)
-    hdr_cells[2].text = "Дружественные"
-    set_center(hdr_cells[2])
-    hdr_cells[3].text = "Позитивные публикации"
-    set_center(hdr_cells[3])
-    hdr_cells[4].text = "Негативные публикации"
-    set_center(hdr_cells[4])
-    hdr_cells[5].text = "Нейтральные публикации"
-    set_center(hdr_cells[5])
+    max_count = 0
+    # table.style = 'TableGrid'
     for cell in records:
-        row_cells = table.add_row().cells
+        max_count +=1
+        if max_count == 1:
+            row_cells = table.rows[1].cells
+        else:
+            row_cells = table.add_row().cells
 
         row_cells[0].text = cell['header']
         positive = int(cell['positive']['posts'])
@@ -632,7 +565,7 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
         netural = int(cell['netural']['posts'])
         total = int(cell['total']['posts'])
 
-        row_cells[1].text = str(total)
+        row_cells[1].text = add_whitespace(str(total))
         set_center(row_cells[1])
         _, _, _, _, friendly_smi, friendly_social = posts_info[cell["reference_id"]]
         friendly = 0
@@ -640,17 +573,22 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
             friendly = friendly_smi
         else:
             friendly = friendly_social
-        row_cells[2].text = str(friendly)
+        row_cells[2].text = add_whitespace(str(friendly))
         set_center(row_cells[2])
-        row_cells[3].text = str(positive)
+        row_cells[3].text = add_whitespace(str(positive))
         set_center(row_cells[3])
-        row_cells[4].text = str(negative)
+        row_cells[4].text = add_whitespace(str(negative))
         set_center(row_cells[4])
+        row_cells[5].text = add_whitespace(str(total - positive - negative))
 
-        row_cells[5].text = str(total - positive - negative)
+        row_cells[0].alignment = WD_TABLE_ALIGNMENT.LEFT
+        row_cells[0].paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.LEFT
+        set_center(row_cells[1])
+        set_center(row_cells[2])
+        set_center(row_cells[3])
+        set_center(row_cells[4])
         set_center(row_cells[5])
 
-    change_table_font(table)
 
 
 def update_center_right(row_cell):
@@ -890,7 +828,7 @@ def add_table_trust(document, table_number, header, table_data_range,
         table.columns[1].width = Inches(1.2)
         table.columns[2].width = Inches(1.5)
         table.columns[3].width = Inches(3.25)
-    table.style = 'TableGrid'
+    # table.style = 'TableGrid'
     add_col_name(table, social)
 
     change_table_font(table)
