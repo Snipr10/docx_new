@@ -397,7 +397,11 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
                     document.add_page_break()
                 except Exception as e:
                     logger.error(f"creater 2 {e}")
-
+        for p in reversed(document.paragraphs):
+            if not p.text.strip():
+                delete_paragraph(p)
+            else:
+                break
         return document
 
 
@@ -796,7 +800,7 @@ def add_table_trust(document, table_number, header, table_data_range,
                     table_data_pos_neu,
                     table_data_neg, today, doc_type, first, social=False):
     parag_table_1 = document.add_paragraph()
-    p_text = f' Таблица {table_number}. Топ публикаций СМИ {doc_type} {today}'
+    p_text = f' Таблица {table_number}. Топ публикаций {doc_type} {today}'
 
     parag_table_1.add_run(
         p_text,
@@ -820,10 +824,10 @@ def add_table_trust(document, table_number, header, table_data_range,
         table.columns[3].width = Inches(4.816)
     else:
         table.columns[0].width = Inches(0.244)
-        table.columns[1].width = Inches(1.33)
-        table.columns[2].width = Inches(1.21)
-        table.columns[3].width = Inches(4.479)
-    # table.style = 'TableGrid'
+        table.columns[1].width = Inches(1.392)
+        table.columns[2].width = Inches(1.268)
+        table.columns[3].width = Inches(4.679)
+    table.table.style = initial_document.tables[0].style
     add_col_name(table, social)
 
     for cell in table.rows[0].cells[1:]:
