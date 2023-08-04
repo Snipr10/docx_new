@@ -21,6 +21,7 @@ from io import BytesIO
 import logging
 
 from docx import Document
+from docx.text.run import Run
 from fastapi import FastAPI, Request
 from pptx.dml.color import RGBColor
 from pptx.oxml.xmlchemy import OxmlElement
@@ -42,7 +43,7 @@ COOKIES = []
 
 KOM_NAME = "Комитет по образованию"
 STYLE = "Times New Roman"
-PT = Pt(10.5)
+PT = Pt(10)
 
 dictConfig(log_config)
 app = FastAPI()
@@ -334,8 +335,9 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
 
         for statistic_chart_title, statist_chart_data in charts_data:
             if add_chart_title:
-                document.add_page_break()
-                add_title_text(document, "Динамика распространения публикаций", True)
+                if chart_number != 1:
+                    document.add_page_break()
+                add_title_text(document, "Динамика распространения публикаций", True, docx.enum.text.WD_ALIGN_PARAGRAPH.LEFT)
                 add_chart_title = False
             chart_number = add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data,
                                               today_str,
@@ -346,7 +348,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         if chart_number % 2 == 0:
             document.add_page_break()
 
-        add_title_text(document, "ТОПы публикаций СМИ и социальных сетей", True)
+        add_title_text(document, "Топы публикаций СМИ и социальных сетей", True, docx.enum.text.WD_ALIGN_PARAGRAPH.LEFT)
 
         first = True
         for trust_table_title, table_social_data_range, table_smi_data_range, table_social_data_pos_neu, \
@@ -405,7 +407,7 @@ def update_pagagraphs(paragraphs):
     for paragraph in paragraphs:
         for run in paragraph.runs:
             font = run.font
-            font.size = Pt(10.5)
+            font.size = Pt(10)
             font.name = STYLE
 
 
@@ -430,9 +432,9 @@ def add_title_text(document, text, is_bold, alignment=docx.enum.text.WD_ALIGN_PA
     # fmt.first_line_indent = Mm(-15)
     fmt.right_indent = Mm(-25)
     fmt.space_before = Mm(15)
-    fmt.space_after = Mm(10)
+    fmt.space_after = Mm(3)
     # fmt.first_line_indent = Mm(-10)
-    fmt.left_indent = Mm(0)
+    fmt.left_indent = Mm(10)
 
     parag_title.add_run(
         text,
@@ -441,6 +443,9 @@ def add_title_text(document, text, is_bold, alignment=docx.enum.text.WD_ALIGN_PA
     parag_title.alignment = alignment
     if is_bold:
         parag_title.runs[-1].bold = True
+    parag_title.style.font.size = docx.shared.Pt(12)
+    parag_title.runs[-1].font.size = docx.shared.Pt(12)
+    parag_title.runs[-1].italic = True
 
 
 def set_cell_vertical_alignment(cell, align="center"):
@@ -456,9 +461,11 @@ def set_cell_vertical_alignment(cell, align="center"):
         return False
 
 
-def set_center(cell):
-    set_cell_vertical_alignment(cell)
+def set_center(cell, align="center"):
+    set_cell_vertical_alignment(cell, align)
     cell.alignment = WD_TABLE_ALIGNMENT.CENTER
+    # from docx.enum.table import WD_TABLE_ALIGNMENT, WD_CELL_VERTICAL_ALIGNMENT as WD_ALIGN_VERTICAL
+
     cell.paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.CENTER
 
 
@@ -522,11 +529,8 @@ def add_table1(document, table_number, header, records, today, add_table_title, 
         row_cells[0].text = add_whitespace(str(i))
         row_cells[1].alignment = WD_TABLE_ALIGNMENT.LEFT
         row_cells[1].paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.LEFT
-        set_center(row_cells[0])
-        set_center(row_cells[2])
-        set_center(row_cells[3])
-        set_center(row_cells[4])
-        set_center(row_cells[5])
+        for cell in row_cells:
+            set_center(cell, align="bottom")
 
         i += 1
 
@@ -583,13 +587,8 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
 
         row_cells[0].alignment = WD_TABLE_ALIGNMENT.LEFT
         row_cells[0].paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.LEFT
-        set_center(row_cells[1])
-        set_center(row_cells[2])
-        set_center(row_cells[3])
-        set_center(row_cells[4])
-        set_center(row_cells[5])
-
-
+        for cell in row_cells:
+            set_center(cell, align="bottom")
 
 def update_center_right(row_cell):
     set_cell_vertical_alignment(row_cell)
@@ -787,71 +786,59 @@ def add_table_trust(document, table_number, header, table_data_range,
                     table_data_pos_neu,
                     table_data_neg, today, doc_type, first, social=False):
     parag_table_1 = document.add_paragraph()
-    p_text = f' Таблица {table_number} - ТОПы публикаций {doc_type} с упоминаниями '
-
-    if not first:
-        p_text = "\n " + p_text
+    p_text = f' Таблица {table_number}. Топ публикаций СМИ {doc_type} {today}'
 
     parag_table_1.add_run(
         p_text,
         style=STYLE
     )
-
-    add_name(parag_table_1, header)
-    parag_table_1.add_run(
-        f' {today}.',
-        style=STYLE
-    )
-
-    p_small_text = "\nФормирование ТОП публикаций осуществляется на основании охватов издания." if \
-        not social else "\nФормирование ТОП публикаций осуществляется на основании суммы реакций."
-
-    parag_table_1.add_run(
-        p_small_text,
-        style=STYLE
-    )
-    parag_table_1.runs[-1].font.size = Pt(8)
-
-    parag_table_1.paragraph_format.space_after = Inches(0)
-    parag_table_1.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.JUSTIFY
+    fmt = parag_table_1.paragraph_format
+    # fmt.first_line_indent = Mm(-15)
+    fmt.space_after = Mm(0)
+    parag_table_1.style.font.size = docx.shared.Pt(12)
+    parag_table_1.runs[-1].font.size = docx.shared.Pt(12)
+    parag_table_1.runs[-1].italic = True
+    parag_table_1.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.RIGHT
 
     table = document.add_table(rows=0, cols=4)
     table.autofit = False
     table.allow_autofit = False
     if not social:
-        table.columns[0].width = Inches(0.2)
-        table.columns[1].width = Inches(1.5)
-        table.columns[2].width = Inches(0.6)
-        table.columns[3].width = Inches(3.85)
+        table.columns[0].width = Inches(0.244)
+        table.columns[1].width = Inches(1.768)
+        table.columns[2].width = Inches(0.752)
+        table.columns[3].width = Inches(4.816)
     else:
-        table.columns[0].width = Inches(0.2)
-        table.columns[1].width = Inches(1.2)
-        table.columns[2].width = Inches(1.5)
-        table.columns[3].width = Inches(3.25)
+        table.columns[0].width = Inches(0.244)
+        table.columns[1].width = Inches(1.33)
+        table.columns[2].width = Inches(1.21)
+        table.columns[3].width = Inches(4.479)
     # table.style = 'TableGrid'
     add_col_name(table, social)
 
-    change_table_font(table)
-
+    for cell in table.rows[0].cells[1:]:
+        cell.paragraphs[0].runs[0].bold = True
+        set_center(cell)
     if table_data_range:
         table_data_range = sorted(table_data_range, key=lambda x: x[0], reverse=True)
         row_cells = table.add_row().cells
         if not social:
-            header_cell(row_cells, "ТОП-5 публикаций по охватам", "81e5f8")
+            header_cell(row_cells, "Топ публикаций по охватам", "dfd4e5")
         else:
-            header_cell(row_cells, "ТОП-5 публикаций", "81e5f8")
+            header_cell(row_cells, "Топ публикаций", "dfd4e5")
         add_top5(table, table_data_range, social)
     if table_data_pos_neu:
         table_data_pos_neu = sorted(table_data_pos_neu, key=lambda x: x[0], reverse=True)
         row_cells = table.add_row().cells
-        header_cell(row_cells, "ТОП-5 позитивных и нейтральных публикаций", "72f983")
+        header_cell(row_cells, "Топ позитивных и нейтральных публикаций", "dde8bc")
         add_top5(table, table_data_pos_neu, social)
     if table_data_neg:
         table_data_neg = sorted(table_data_neg, key=lambda x: x[0], reverse=True)
         row_cells = table.add_row().cells
-        header_cell(row_cells, "ТОП-5 негативных и противоречивых публикаций", "d24141")
+        header_cell(row_cells, "Топ негативных и противоречивых публикаций", "f3acac")
         add_top5(table, table_data_neg, social)
 
+    change_table_font(table)
 
 def add_col_name(table, social):
     row_cells = table.add_row().cells
@@ -862,7 +849,6 @@ def add_col_name(table, social):
         row_cells[2].text = "Охват"
     row_cells[3].text = "Текст"
 
-
 def header_cell(hdr_cells, header, color):
     hdr_cells[0].text = header
     hdr_cells[0].merge(hdr_cells[1])
@@ -870,6 +856,8 @@ def header_cell(hdr_cells, header, color):
     hdr_cells[0].merge(hdr_cells[3])
     shading_elm = parse_xml(r'<w:shd {} w:fill="{}"/>'.format(nsdecls('w'), color))
     hdr_cells[0]._tc.get_or_add_tcPr().append(shading_elm)
+    set_center(hdr_cells[0])
+    hdr_cells[0].paragraphs[0].runs[0].bold = True
 
 
 def add_top5(table, table_data, social):
@@ -888,7 +876,7 @@ def add_top5(table, table_data, social):
                 row_cells[2].paragraphs[0].runs[-1].bold = True
 
                 row_cells[2].paragraphs[0].add_run(
-                    table_data[i][1]["viewed"] + "\n",
+                    add_whitespace(str(table_data[i][1]["viewed"])) + "\n",
                     style=STYLE
                 )
 
@@ -899,7 +887,7 @@ def add_top5(table, table_data, social):
                 row_cells[2].paragraphs[0].runs[-1].bold = True
 
                 row_cells[2].paragraphs[0].add_run(
-                    table_data[i][1]["likes"] + "\n",
+                    add_whitespace(str(table_data[i][1]["likes"])) + "\n",
                     style=STYLE
                 )
                 row_cells[2].paragraphs[0].add_run(
@@ -909,7 +897,7 @@ def add_top5(table, table_data, social):
                 row_cells[2].paragraphs[0].runs[-1].bold = True
 
                 row_cells[2].paragraphs[0].add_run(
-                    table_data[i][1]["comments"] + "\n",
+                    add_whitespace(str(table_data[i][1]["comments"])) + "\n",
                     style=STYLE
                 )
                 row_cells[2].paragraphs[0].add_run(
@@ -919,31 +907,20 @@ def add_top5(table, table_data, social):
                 row_cells[2].paragraphs[0].runs[-1].bold = True
 
                 row_cells[2].paragraphs[0].add_run(
-                    table_data[i][1]["reposts"] + "\n",
+                    add_whitespace(str(table_data[i][1]["reposts"])),
                     style=STYLE
                 )
             else:
-                row_cells[2].text = str(table_data[i][0]) + "\n"
+                row_cells[2].text = add_whitespace(str(table_data[i][0]))
 
-            row_cells[3].paragraphs[0].add_run(
-                f"{table_data[i][1]['created_date']}\n",
-                style=STYLE
-            )
-            row_cells[3].paragraphs[0].runs[-1].italic = True
-            row_cells[3].paragraphs[0].runs[-1].bold = True
-            row_cells[3].paragraphs[0].runs[-1].font.size = Pt(8)
 
             if table_data[0][1]['title']:
                 row_cells[3].paragraphs[0].add_run(
-                    f"{table_data[i][1]['title']}\n\n",
+                    f"{table_data[i][1]['title']}\n",
                     style=STYLE
                 )
                 row_cells[3].paragraphs[0].runs[-1].bold = True
-            else:
-                row_cells[3].paragraphs[0].add_run(
-                    "\n",
-                    style=STYLE
-                )
+
             add_hyperlink(row_cells[1].paragraphs[0], table_data[i][1]['url'], table_data[i][1]['url'], None, True)
 
             text, add_link = remove_html_tags(table_data[i][1]['text'])
@@ -951,7 +928,20 @@ def add_top5(table, table_data, social):
             if add_link:
                 add_hyperlink(row_cells[3].paragraphs[0], table_data[i][1]['url'], "далее по ссылке", None, True, True)
 
-            set_center(row_cells[2])
+            set_center(row_cells[2], "bottom")
+            set_center(row_cells[0], "bottom")
+            set_cell_vertical_alignment(row_cells[1], "bottom")
+            set_cell_vertical_alignment(row_cells[3], "bottom")
+            for paragraph in row_cells[3]:
+                for run in paragraph.runs:
+                    font = run.font
+                    font.size = Pt(10)
+                    font.name = STYLE
+            for paragraph in row_cells[1]:
+                for run in paragraph.runs:
+                    font = run.font
+                    font.size = Pt(10)
+                    font.name = STYLE
         except Exception as e:
             logger.error(f"add_top5 {e}")
 
@@ -1185,7 +1175,14 @@ async def get_tables(session, periods_data, sub, thread_id, reference_ids):
 
     return topics_tables, statistic_tables, trust_tables, charts_data, posts_info
 
-
+def getParagraphRuns(paragraph):
+    def _get(node, parent):
+        for child in node:
+            if child.tag == qn('w:r'):
+                yield Run(child, parent)
+            if child.tag == qn('w:hyperlink'):
+                yield from _get(child, parent)
+    return list(_get(paragraph._element, paragraph))
 def add_hyperlink(paragraph, url, text, color, underline, is_italic=False):
     part = paragraph.part
     r_id = part.relate_to(url, docx.opc.constants.RELATIONSHIP_TYPE.HYPERLINK, is_external=True)
@@ -1213,12 +1210,14 @@ def add_hyperlink(paragraph, url, text, color, underline, is_italic=False):
     new_run.append(rPr)
     new_run.text = text
     new_run.style = STYLE
+    new_run.size = docx.shared.Pt(10)
     hyperlink.append(new_run)
     paragraph._p.append(hyperlink)
     # paragraph._p.style = STYLE
     paragraph.style.font.name = "Times New Roman"
-    paragraph.style.font.size = docx.shared.Pt(10.5)
-
+    paragraph.style.font.size = docx.shared.Pt(10)
+    for run in  getParagraphRuns(paragraph):
+        run.font.size = docx.shared.Pt(10)
     return hyperlink
 
 
@@ -1249,7 +1248,7 @@ def update_chart_none(data_list):
 
 def update_chart_style(chart):
     chart.has_legend = True
-    chart.legend.position = XL_LEGEND_POSITION.BOTTOM
+    chart.legend.position = XL_LEGEND_POSITION.TOP
     chart.legend.include_in_layout = False
     chart.legend.font.size = Pt(9)
     chart.legend.font.name = STYLE
@@ -1280,24 +1279,41 @@ def update_chart_style(chart):
 
     fill_properties.append(scheme_color)
 
+    chart.value_axis.visible = False
 
+def add_chart_pict(parag_title, text):
+    fmt = parag_title.paragraph_format
+    fmt.space_before = Mm(0)
+    fmt.left_indent = Mm(0)
+
+    parag_title.add_run(
+        text,
+        style=STYLE
+    )
+    parag_title.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER
+
+    parag_title.style.font.size = docx.shared.Pt(12)
+    parag_title.runs[-1].font.size = docx.shared.Pt(12)
+    parag_title.runs[-1].italic = True
 def add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data, today, today_all,
                        periods_data):
-    parag_table = document.add_paragraph()
-    parag_table.add_run(
-        f' График {chart_number} - Динамика распространения публикаций с упоминанием ',
-        style=STYLE
-    )
-    add_name(parag_table, statistic_chart_title)
-    parag_table.add_run(
-        f', соотношение по источнику информации {today}',
-        style=STYLE
-    )
-    # parag_table.paragraph_format.right_indent = Inches(0.25)
-    parag_table.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.JUSTIFY
-
     categories = []
     categories_str = []
+
+    months_dict = {
+        "1":"янв",
+        "2":"фев",
+        "3": "март",
+        "4": "апр",
+        "5": "мая",
+        "6": "июня",
+        "7": "июля",
+        "8": "авг",
+        "9": "сент",
+        "10": "окт",
+        "11": "ноябр",
+        "12": "дек",
+    }
 
     for i in statist_chart_data['smi']:
         if ":" in i['item_date']:
@@ -1306,19 +1322,7 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
         else:
             start_date = dateutil.parser.parse(i['item_date']).date()
             categories.append(start_date)
-            categories_str.append(f"{start_date.day}.{start_date.month}")
-
-    # if periods_data.get("period") == "day":
-    #     for i in range(today_all.hour + 1):
-    #         categories.append(i)
-    #         categories_str.append(f"{i}.00")
-    # else:
-    #     # start_date = get_from_date_datetime(periods_data.get("period")).date()
-    #     start_date = dateutil.parser.parse(periods_data.get("_from_data")).date()
-    #     while start_date <= dateutil.parser.parse(periods_data.get("_to_data")).date():
-    #         categories.append(start_date)
-    #         categories_str.append(f"{start_date.day}.{start_date.month}")
-    #         start_date += timedelta(days=1)
+            categories_str.append(f"{start_date.day}.{months_dict.get(str(start_date.month))}")
 
     negative_list_smi = [0] * len(categories)
     neutral_list_smi = [0] * len(categories)
@@ -1347,14 +1351,18 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
     chart_data.categories = categories_str
 
     chart_data.add_series('Сми', update_chart_none(smi_list))
-    chart_data.add_series('СоцСети', update_chart_none(social_list))
-    x, y, cx, cy = Inches(-3.5), Inches(0), Inches(6.15), Inches(3.3)
+    chart_data.add_series('Социальные сети', update_chart_none(social_list))
+    x, y, cx, cy = Inches(-3.5), Inches(0), Inches(7.50), Inches(3.3)
 
     chart = document.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data)
-    change_color(chart.plots[0].series[0], RGBColor(255, 134, 13))
-    change_color(chart.plots[0].series[1], RGBColor(87, 57, 132))
+    change_color(chart.plots[0].series[0], RGBColor(171, 202, 236))
+    change_color(chart.plots[0].series[1], RGBColor(165, 165, 165))
 
     update_chart_style(chart)
+
+    add_chart_pict(document.paragraphs[-1], f"Рисунок {chart_number}. Динамика распространения публикаций {today}")
+
+
 
     if (sum(neutral_list_social) + sum(negative_list_social) + sum(positive_list_social)) > 0:
         if chart_number % 2 == 0:
@@ -1365,12 +1373,6 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
                         negative_list_social, neutral_list_social, positive_list_social,
                         x, y, cx, cy)
 
-    # if chart_number % 2 == 1 and period == "day":
-    #     parag_table = document.add_paragraph()
-    #     parag_table.add_run(
-    #         f' ',
-    #         style=STYLE
-    #     )
     if (sum(negative_list_smi) + sum(neutral_list_smi) + sum(positive_list_smi)) > 0:
         if chart_number % 2 == 0:
             document.add_page_break()
@@ -1379,6 +1381,7 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
         add_table_tonal(document, "СМИ", chart_number, statistic_chart_title, today, categories_str,
                         negative_list_smi, neutral_list_smi, positive_list_smi,
                         x, y, cx, cy)
+
     if chart_number % 2 == 0:
         document.add_page_break()
     return chart_number
@@ -1388,17 +1391,7 @@ def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_t
                     negative_list, neutral_list, positive_list,
                     x, y, cx, cy
                     ):
-    parag_table = document.add_paragraph()
-    parag_table.add_run(
-        f' График {chart_number} - Динамика распространения публикаций {chart_title_type_} с упоминанием ',
-        style=STYLE
-    )
-    add_name(parag_table, statistic_chart_title)
-    parag_table.add_run(
-        f', соотношение по тональности {today}',
-        style=STYLE
-    )
-    parag_table.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.JUSTIFY
+
 
     chart_data = CategoryChartData()
     chart_data.categories = categories_str
@@ -1408,11 +1401,12 @@ def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_t
     chart_data.add_series('Позитивные', positive_list)
     chart = document.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data)
 
-    change_color(chart.plots[0].series[0], RGBColor(255, 0, 0))
-    change_color(chart.plots[0].series[1], RGBColor(180, 180, 180))
-    change_color(chart.plots[0].series[2], RGBColor(0, 255, 0))
+    change_color(chart.plots[0].series[0], RGBColor(243, 172, 172))
+    change_color(chart.plots[0].series[1], RGBColor(171, 202, 236))
+    change_color(chart.plots[0].series[2], RGBColor(200, 218, 145))
 
     update_chart_style(chart)
+    add_chart_pict(document.paragraphs[-1], f"Рисунок {chart_number}. Динамика распространения публикаций {chart_title_type_}, соотношение по тональности {today}")
 
 
 if __name__ == "__main__":
