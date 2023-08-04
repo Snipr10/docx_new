@@ -1,4 +1,6 @@
 import asyncio
+from copy import deepcopy
+
 import dateutil
 import docx
 import httpx as httpx
@@ -40,6 +42,7 @@ from log_conf import log_config
 from settings import SUBECT_URL, SUBECT_TOPIC_URL, STATISTIC_URL, STATISTIC_TRUST_GRAPH, GET_TRUST_URL, NETWORK_IDS
 
 COOKIES = []
+initial_document = Document("test0.docx")
 
 KOM_NAME = "Комитет по образованию"
 STYLE = "Times New Roman"
@@ -219,10 +222,13 @@ async def tonal(request: Request):
 def _last_time(day):
     return datetime(day.year, day.month, day.day, 23, 59, 59).strftime('%Y-%m-%d %H:%M:%S')
 
+
 def delete_paragraph(paragraph):
     p = paragraph._element
     p.getparent().remove(p)
     p._p = p._element = None
+
+
 async def creater(reference_ids, login_user, password, thread_id, periods_data):
     async with httpx.AsyncClient() as session:
 
@@ -254,7 +260,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
                 periods_data["_to_data"] = today_all.strftime('%Y-%m-%d %H:%M:%S')
         logger.error(f"document")
 
-        document = Document("test0.docx")
+        document = deepcopy(initial_document)
 
         logger.error(f"sub")
         sub = await get_start_date(session)
@@ -306,19 +312,18 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         add_table_title = True
 
         for topics_table_title, topics_table_data, reference_id in topics_tables:
-
             add_table1(document, table_number, topics_table_title, topics_table_data, today_str, add_table_title,
-                           posts_info)
+                       posts_info)
             table_number += 1
             add_table_title = False
         for p in document.paragraphs:
             if 'Таблица n. Главные темы публикаций СМИ\n' in p.text:
                 delete_paragraph(p)
-                document.tables[table_number-1]._element.getparent().remove(document.tables[table_number-1]._element)
+                document.tables[table_number - 1]._element.getparent().remove(
+                    document.tables[table_number - 1]._element)
 
         add_table_title = True
         for statistic_table_title, statistic_table_date in statistic_tables:
-
             add_table2(document, table_number, statistic_table_date, statistic_table_title, today_str, add_table_title,
                        posts_info)
             table_number += 1
@@ -326,18 +331,18 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         for p in document.paragraphs:
             if "Таблица n. Общая статистика публикаций СМИ" in p.text or "Таблица n. Общая статистика публикаций в социальных сетях" in p.text:
                 delete_paragraph(p)
-                document.tables[table_number-1]._element.getparent().remove(document.tables[table_number-1]._element)
+                document.tables[table_number - 1]._element.getparent().remove(
+                    document.tables[table_number - 1]._element)
 
         chart_number = 1
         add_chart_title = True
-
-
 
         for statistic_chart_title, statist_chart_data in charts_data:
             if add_chart_title:
                 if chart_number != 1:
                     document.add_page_break()
-                add_title_text(document, "Динамика распространения публикаций", True, docx.enum.text.WD_ALIGN_PARAGRAPH.LEFT)
+                add_title_text(document, "Динамика распространения публикаций", True,
+                               docx.enum.text.WD_ALIGN_PARAGRAPH.LEFT)
                 add_chart_title = False
             chart_number = add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data,
                                               today_str,
@@ -422,7 +427,8 @@ def parag_format(parag):
 
 
 def add_title(document, today, sub):
-    document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("1", ", ".join([f"«{s}»" for s in sub])).replace("2", today)
+    document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("1", ", ".join(
+        [f"«{s}»" for s in sub])).replace("2", today)
 
 
 def add_title_text(document, text, is_bold, alignment=docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER):
@@ -490,6 +496,7 @@ def indent_table(table, indent):
         e.set(qn('w:type'), 'dxa')
         tbl_pr[0].append(e)
 
+
 def add_whitespace(inter):
     res = ''
     iter = 0
@@ -501,6 +508,8 @@ def add_whitespace(inter):
         else:
             iter += 1
     return res
+
+
 def add_table1(document, table_number, header, records, today, add_table_title, posts_info):
     index = 0
     for i, p in enumerate(document.paragraphs):
@@ -509,7 +518,7 @@ def add_table1(document, table_number, header, records, today, add_table_title, 
             break
     document.paragraphs[index].runs[1].text = str(table_number)
     document.paragraphs[index].runs[2].text = document.paragraphs[index].runs[2].text.replace("за период", today)
-    table = document.tables[table_number-1]
+    table = document.tables[table_number - 1]
     i = 1
     max_count = 0
     for cell in records:
@@ -534,8 +543,8 @@ def add_table1(document, table_number, header, records, today, add_table_title, 
 
         i += 1
 
-def add_table2(document, table_number, records, table_type, today, add_table_title, posts_info):
 
+def add_table2(document, table_number, records, table_type, today, add_table_title, posts_info):
     index = 0
     for i, p in enumerate(document.paragraphs):
         if 'СМИ' == table_type:
@@ -552,12 +561,12 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
         document.paragraphs[index].runs[3].text = document.paragraphs[index].runs[3].text.replace("за период", today)
     except Exception:
         pass
-    table = document.tables[table_number-1]
+    table = document.tables[table_number - 1]
 
     max_count = 0
     # table.style = 'TableGrid'
     for cell in records:
-        max_count +=1
+        max_count += 1
         if max_count == 1:
             row_cells = table.rows[1].cells
         else:
@@ -589,6 +598,7 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
         row_cells[0].paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.LEFT
         for cell in row_cells:
             set_center(cell, align="bottom")
+
 
 def update_center_right(row_cell):
     set_cell_vertical_alignment(row_cell)
@@ -840,6 +850,7 @@ def add_table_trust(document, table_number, header, table_data_range,
 
     change_table_font(table)
 
+
 def add_col_name(table, social):
     row_cells = table.add_row().cells
     row_cells[1].text = "Ссылка"
@@ -848,6 +859,8 @@ def add_col_name(table, social):
     else:
         row_cells[2].text = "Охват"
     row_cells[3].text = "Текст"
+    set_repeat_table_header(table.rows[-1])
+
 
 def header_cell(hdr_cells, header, color):
     hdr_cells[0].text = header
@@ -858,6 +871,17 @@ def header_cell(hdr_cells, header, color):
     hdr_cells[0]._tc.get_or_add_tcPr().append(shading_elm)
     set_center(hdr_cells[0])
     hdr_cells[0].paragraphs[0].runs[0].bold = True
+
+
+def set_repeat_table_header(row):
+    """ set repeat table row on every new page
+    """
+    tr = row._tr
+    trPr = tr.get_or_add_trPr()
+    tblHeader = OxmlElement('w:tblHeader')
+    tblHeader.set(qn('w:val'), "true")
+    trPr.append(tblHeader)
+    return row
 
 
 def add_top5(table, table_data, social):
@@ -912,7 +936,6 @@ def add_top5(table, table_data, social):
                 )
             else:
                 row_cells[2].text = add_whitespace(str(table_data[i][0]))
-
 
             if table_data[0][1]['title']:
                 row_cells[3].paragraphs[0].add_run(
@@ -1175,6 +1198,7 @@ async def get_tables(session, periods_data, sub, thread_id, reference_ids):
 
     return topics_tables, statistic_tables, trust_tables, charts_data, posts_info
 
+
 def getParagraphRuns(paragraph):
     def _get(node, parent):
         for child in node:
@@ -1182,7 +1206,10 @@ def getParagraphRuns(paragraph):
                 yield Run(child, parent)
             if child.tag == qn('w:hyperlink'):
                 yield from _get(child, parent)
+
     return list(_get(paragraph._element, paragraph))
+
+
 def add_hyperlink(paragraph, url, text, color, underline, is_italic=False):
     part = paragraph.part
     r_id = part.relate_to(url, docx.opc.constants.RELATIONSHIP_TYPE.HYPERLINK, is_external=True)
@@ -1216,7 +1243,7 @@ def add_hyperlink(paragraph, url, text, color, underline, is_italic=False):
     # paragraph._p.style = STYLE
     paragraph.style.font.name = "Times New Roman"
     paragraph.style.font.size = docx.shared.Pt(10)
-    for run in  getParagraphRuns(paragraph):
+    for run in getParagraphRuns(paragraph):
         run.font.size = docx.shared.Pt(10)
     return hyperlink
 
@@ -1281,6 +1308,7 @@ def update_chart_style(chart):
 
     chart.value_axis.visible = False
 
+
 def add_chart_pict(parag_title, text):
     fmt = parag_title.paragraph_format
     fmt.space_before = Mm(0)
@@ -1295,14 +1323,16 @@ def add_chart_pict(parag_title, text):
     parag_title.style.font.size = docx.shared.Pt(12)
     parag_title.runs[-1].font.size = docx.shared.Pt(12)
     parag_title.runs[-1].italic = True
+
+
 def add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data, today, today_all,
                        periods_data):
     categories = []
     categories_str = []
 
     months_dict = {
-        "1":"янв",
-        "2":"фев",
+        "1": "янв",
+        "2": "фев",
         "3": "март",
         "4": "апр",
         "5": "мая",
@@ -1362,8 +1392,6 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
 
     add_chart_pict(document.paragraphs[-1], f"Рисунок {chart_number}. Динамика распространения публикаций {today}")
 
-
-
     if (sum(neutral_list_social) + sum(negative_list_social) + sum(positive_list_social)) > 0:
         if chart_number % 2 == 0:
             document.add_page_break()
@@ -1391,8 +1419,6 @@ def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_t
                     negative_list, neutral_list, positive_list,
                     x, y, cx, cy
                     ):
-
-
     chart_data = CategoryChartData()
     chart_data.categories = categories_str
 
@@ -1406,7 +1432,8 @@ def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_t
     change_color(chart.plots[0].series[2], RGBColor(200, 218, 145))
 
     update_chart_style(chart)
-    add_chart_pict(document.paragraphs[-1], f"Рисунок {chart_number}. Динамика распространения публикаций {chart_title_type_}, соотношение по тональности {today}")
+    add_chart_pict(document.paragraphs[-1],
+                   f"Рисунок {chart_number}. Динамика распространения публикаций {chart_title_type_}, соотношение по тональности {today}")
 
 
 if __name__ == "__main__":
