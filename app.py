@@ -240,7 +240,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         if periods_data.get("period") == "day":
             today_all = datetime.today() + timedelta(hours=UTC)
             today = today_all.strftime('%d-%m-%Y')
-            today_str = f"на {today}"
+            today_str = f"на {today_all.strftime('%d.%m.%Y')} г."
             periods_data["_from_data"] = get_from_date(periods_data.get("period"))
             periods_data["_to_data"] = _last_time(today_all)
 
@@ -249,13 +249,13 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
                 today_all = datetime.today() + timedelta(hours=UTC) - timedelta(days=1)
                 today_all = datetime(today_all.year, today_all.month, today_all.day, 23, 59, 59)
                 today = today_all.strftime('%d-%m-%Y')
-                today_str = f"за период с {get_from_date_datetime(periods_data.get('period')).strftime('%d-%m-%Y')} по {today}"
+                today_str = f"за период с {get_from_date_datetime(periods_data.get('period')).strftime('%d.%m.%Y')} г. по {today_all.strftime('%d.%m.%Y')} г."
                 periods_data["_from_data"] = get_from_date(periods_data.get("period"))
                 periods_data["_to_data"] = today_all.strftime('%Y-%m-%d %H:%M:%S')
             else:
                 _to_data = dateutil.parser.parse(periods_data["_to_data"])
                 today_all = datetime(_to_data.year, _to_data.month, _to_data.day, 23, 59, 59)
-                today_str = f"за период с {dateutil.parser.parse(periods_data['_from_data']).strftime('%d-%m-%Y')} по {dateutil.parser.parse(periods_data['_to_data']).strftime('%d-%m-%Y')}"
+                today_str = f"за период с {dateutil.parser.parse(periods_data['_from_data']).strftime('%d.%m.%Y')} г. по {dateutil.parser.parse(periods_data['_to_data']).strftime('%d.%m.%Y')} г."
 
                 periods_data["_to_data"] = today_all.strftime('%Y-%m-%d %H:%M:%S')
         logger.error(f"document")
@@ -432,7 +432,11 @@ def parag_format(parag):
 
 def add_title(document, today, sub):
     document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("1", ", ".join(
-        [f"«{s}»" for s in sub])).replace("2", today)
+        [f"«{s[0]}»" for s in sub])).replace("2", today)
+    if sub[0][1].lower() == "субъекту":
+        document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("/событию", "")
+    else:
+        document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("субъекту/", "")
 
 
 def add_title_text(document, text, is_bold, alignment=docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER):
@@ -546,7 +550,8 @@ def add_table1(document, table_number, header, records, today, add_table_title, 
             set_center(cell, align="bottom")
 
         i += 1
-
+        fmt = row_cells[5].paragraphs[0].paragraph_format
+        fmt.space_before = Mm(0)
 
 def add_table2(document, table_number, records, table_type, today, add_table_title, posts_info):
     index = 0
@@ -614,7 +619,9 @@ async def subects(session):
     try:
         res = []
         for r in response.json():
-            res.extend(r['items'] or [])
+            for i in (r['items'] or []):
+                i['reference_id'] = r.get('title', '')
+                res.append(i)
         return res
     except Exception as e:
         logger.error(f"subects {e}")
@@ -1045,7 +1052,7 @@ async def get_trust(session, periods_data, sub, thread_id, reference_ids):
                 reference_id = s['id']
                 if reference_id in reference_ids:
                     table_gather.append(
-                        get_trust_for_sub(session, reference_id, network_ids, s['keyword'], periods_data, thread_id))
+                        get_trust_for_sub(session, reference_id, network_ids, s['keyword'], periods_data, thread_id, s['reference_id']))
             for trust_state_date in await asyncio.gather(*table_gather):
                 if trust_state_date is not None:
                     tables.append(trust_state_date)
@@ -1073,7 +1080,7 @@ async def get_trust_res_net_social_range(session, network_ids, thread_id, refere
         raise e
 
 
-async def get_trust_for_sub(session, reference_id, network_ids, title, periods_data, thread_id):
+async def get_trust_for_sub(session, reference_id, network_ids, title, periods_data, thread_id, s_id):
     try:
         table = None
         networks_without_g = network_ids.copy()
@@ -1098,7 +1105,7 @@ async def get_trust_for_sub(session, reference_id, network_ids, title, periods_d
                 get_attendance(session, res_net_social_neg),
                 get_attendance(session, res_net_gs_range_neg)
             )
-            table = (title,
+            table = ((title, s_id),
                      table_social_data_range, table_smi_data_range,
                      table_social_data_pos_neu, table_smi_data_pos_neu,
                      table_social_data_neg, table_smi_data_neg)
@@ -1188,7 +1195,9 @@ async def post_static(session, reference_id, thread_id, periods_data, chart_name
 
 async def get_tables(session, periods_data, sub, thread_id, reference_ids):
     trust_tables = await get_trust(session, periods_data, sub, thread_id, reference_ids)
+
     topics_tables = await add_topics(session, periods_data, sub, thread_id, reference_ids)
+
     statistic_tables = await  add_statistic(session, periods_data, sub, thread_id, reference_ids)
     charts_data = await get_posts_statistic(session, periods_data, sub, thread_id, reference_ids)
     posts_info = await get_posts_info(session, thread_id, periods_data, reference_ids)
