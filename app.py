@@ -336,13 +336,17 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
 
         chart_number = 1
         add_chart_title = True
+        # for p in reversed(document.paragraphs):
+        #     if not p.text.strip():
+        #         delete_paragraph(p)
+        #         break
 
         for statistic_chart_title, statist_chart_data in charts_data:
             if add_chart_title:
                 if chart_number != 1:
                     document.add_page_break()
                 add_title_text(document, "Динамика распространения публикаций", True,
-                               docx.enum.text.WD_ALIGN_PARAGRAPH.LEFT)
+                               docx.enum.text.WD_ALIGN_PARAGRAPH.LEFT, document.paragraphs[-1])
                 add_chart_title = False
             chart_number = add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data,
                                               today_str,
@@ -410,7 +414,9 @@ def change_table_font(table):
         for cell in row.cells:
             paragraphs = cell.paragraphs
             update_pagagraphs(paragraphs)
-
+            fmt = cell.paragraphs[0].paragraph_format
+            fmt.space_before = Mm(0)
+            fmt.space_after = Mm(0)
 
 def update_pagagraphs(paragraphs):
     for paragraph in paragraphs:
@@ -439,8 +445,9 @@ def add_title(document, today, sub):
         document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("субъекту/", "")
 
 
-def add_title_text(document, text, is_bold, alignment=docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER):
-    parag_title = document.add_paragraph()
+def add_title_text(document, text, is_bold, alignment=docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER, parag_title=None):
+    if not parag_title:
+        parag_title = document.add_paragraph()
 
     fmt = parag_title.paragraph_format
     # fmt.first_line_indent = Mm(-15)
@@ -483,14 +490,14 @@ def set_center(cell, align="center"):
     cell.paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.CENTER
 
 
-def set_right(cell):
-    set_cell_vertical_alignment(cell)
+def set_right(cell, align="center"):
+    set_cell_vertical_alignment(cell, align)
     cell.alignment = WD_TABLE_ALIGNMENT.RIGHT
     cell.paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.RIGHT
 
 
-def set_left(cell):
-    set_cell_vertical_alignment(cell)
+def set_left(cell, align="center"):
+    set_cell_vertical_alignment(cell, align)
     cell.alignment = WD_TABLE_ALIGNMENT.LEFT
     cell.paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.LEFT
 
@@ -548,10 +555,11 @@ def add_table1(document, table_number, header, records, today, add_table_title, 
         row_cells[1].paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.LEFT
         for cell in row_cells:
             set_center(cell, align="bottom")
-
+            fmt = cell.paragraphs[0].paragraph_format
+            fmt.space_before = Mm(0)
+            fmt.space_after = Mm(0)
+        set_left(row_cells[1])
         i += 1
-        fmt = row_cells[5].paragraphs[0].paragraph_format
-        fmt.space_before = Mm(0)
 
 def add_table2(document, table_number, records, table_type, today, add_table_title, posts_info):
     index = 0
@@ -603,10 +611,12 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
         set_center(row_cells[4])
         row_cells[5].text = add_whitespace(str(total - positive - negative))
 
-        row_cells[0].alignment = WD_TABLE_ALIGNMENT.LEFT
-        row_cells[0].paragraphs[0].paragraph_format.alignment = WD_TABLE_ALIGNMENT.LEFT
         for cell in row_cells:
             set_center(cell, align="bottom")
+            fmt = cell.paragraphs[0].paragraph_format
+            fmt.space_before = Mm(0)
+            fmt.space_after = Mm(0)
+        set_left(row_cells[0])
 
 
 def update_center_right(row_cell):
@@ -976,6 +986,10 @@ def add_top5(table, table_data, social):
                     font = run.font
                     font.size = Pt(10)
                     font.name = STYLE
+            for cell in row_cells:
+                fmt = cell.paragraphs[0].paragraph_format
+                fmt.space_before = Mm(0)
+                fmt.space_after = Mm(0)
         except Exception as e:
             logger.error(f"add_top5 {e}")
 
@@ -1296,18 +1310,19 @@ def update_chart_style(chart):
     plot = chart.plots[0]
     plot.has_data_labels = True
     data_labels = plot.data_labels
-    data_labels.font.size = Pt(5)
+    data_labels.font.size = Pt(8)
+    data_labels.font.name = STYLE
 
     value_axis = chart.value_axis
     value_axis.has_major_gridlines = False
 
-    chart.category_axis.tick_labels.font.size = Pt(10)
+    chart.category_axis.tick_labels.font.size = Pt(7)
     chart.category_axis.tick_labels.font.name = STYLE
-    chart.value_axis.tick_labels.font.size = Pt(10)
+    chart.value_axis.tick_labels.font.size = Pt(7)
     chart.value_axis.tick_labels.font.name = STYLE
-    chart.plots[0].chart.value_axis.tick_labels.font.size = Pt(10)
+    chart.plots[0].chart.value_axis.tick_labels.font.size = Pt(7)
     chart.plots[0].chart.value_axis.tick_labels.font.name = STYLE
-    chart.plots[0].chart.category_axis.tick_labels.font.size = Pt(10)
+    chart.plots[0].chart.category_axis.tick_labels.font.size = Pt(7)
     chart.plots[0].chart.category_axis.tick_labels.font.name = STYLE
 
     shape_properties = OxmlElement("c:spPr")
@@ -1393,7 +1408,7 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
     chart_data = CategoryChartData()
     chart_data.categories = categories_str
 
-    chart_data.add_series('Сми', update_chart_none(smi_list))
+    chart_data.add_series('СМИ', update_chart_none(smi_list))
     chart_data.add_series('Социальные сети', update_chart_none(social_list))
     x, y, cx, cy = Inches(-3.5), Inches(0), Inches(7.50), Inches(3.3)
 
@@ -1410,17 +1425,19 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
             document.add_page_break()
 
         chart_number += 1
-        add_table_tonal(document, "в социальных сетях", chart_number, statistic_chart_title, today, categories_str,
-                        negative_list_social, neutral_list_social, positive_list_social,
+
+        add_table_tonal(document, "СМИ", chart_number, statistic_chart_title, today, categories_str,
+                        negative_list_smi, neutral_list_smi, positive_list_smi,
                         x, y, cx, cy)
+
 
     if (sum(negative_list_smi) + sum(neutral_list_smi) + sum(positive_list_smi)) > 0:
         if chart_number % 2 == 0:
             document.add_page_break()
         chart_number += 1
 
-        add_table_tonal(document, "СМИ", chart_number, statistic_chart_title, today, categories_str,
-                        negative_list_smi, neutral_list_smi, positive_list_smi,
+        add_table_tonal(document, "в социальных сетях", chart_number, statistic_chart_title, today, categories_str,
+                        negative_list_social, neutral_list_social, positive_list_social,
                         x, y, cx, cy)
 
     if chart_number % 2 == 0:
@@ -1446,7 +1463,7 @@ def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_t
 
     update_chart_style(chart)
     add_chart_pict(document.paragraphs[-1],
-                   f"Рисунок {chart_number}. Динамика распространения публикаций {chart_title_type_}, соотношение по тональности {today}")
+                   f"Рисунок {chart_number}. Динамика распространения публикаций {chart_title_type_},\nсоотношение по тональности {today}")
 
 
 if __name__ == "__main__":
