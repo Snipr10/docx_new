@@ -273,15 +273,15 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         #     pass
         try:
 
-            # topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables(session,
-            #                                                                                           periods_data, sub,
-            #                                                                                           thread_id,
-            #                                                                                           reference_ids)
-            topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables_mocks(session,
-                                                                                                            periods_data,
-                                                                                                            sub,
-                                                                                                            thread_id,
-                                                                                                            reference_ids)
+            topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables(session,
+                                                                                                      periods_data, sub,
+                                                                                                      thread_id,
+                                                                                                      reference_ids)
+            # topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables_mocks(session,
+            #                                                                                                 periods_data,
+            #                                                                                                 sub,
+            #                                                                                                 thread_id,
+            #                                                                                                 reference_ids)
 
 
         except Exception as e:
