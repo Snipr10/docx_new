@@ -273,15 +273,15 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         #     pass
         try:
             #
-            # topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables(session,
-            #                                                                                           periods_data, sub,
-            #                                                                                           thread_id,
-            #                                                                                           reference_ids)
-            topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables_mocks(session,
-                                                                                                            periods_data,
-                                                                                                            sub,
-                                                                                                            thread_id,
-                                                                                                            reference_ids)
+            topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables(session,
+                                                                                                      periods_data, sub,
+                                                                                                      thread_id,
+                                                                                                      reference_ids)
+            #                                                                                                 periods_data,
+            #                                                                                                 sub,
+            #                                                                                                 thread_id,
+            #                                                                                                 referenc
+            # topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables_mocks(session,e_ids)
 
 
         except Exception as e:
@@ -439,7 +439,7 @@ def parag_format(parag):
 def add_title(document, today, sub):
     document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("1", ", ".join(
         [f"«{s[0]}»" for s in sub])).replace("2", today)
-    if sub[0][1].lower() == "субъекту":
+    if sub[0][1].lower() == "субъект":
         document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("/событию", "")
     else:
         document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("субъекту/", "")
@@ -1368,18 +1368,18 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
     categories_str = []
 
     months_dict = {
-        "1": "янв",
-        "2": "фев",
+        "1": "янв.",
+        "2": "февр.",
         "3": "март",
-        "4": "апр",
+        "4": "апр.",
         "5": "мая",
         "6": "июня",
         "7": "июля",
-        "8": "авг",
-        "9": "сент",
-        "10": "окт",
-        "11": "ноябр",
-        "12": "дек",
+        "8": "авг.",
+        "9": "сент.",
+        "10": "окт.",
+        "11": "нояб.",
+        "12": "дек.",
     }
 
     for i in statist_chart_data['smi']:
@@ -1461,9 +1461,9 @@ def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_t
     chart_data = CategoryChartData()
     chart_data.categories = categories_str
 
-    chart_data.add_series('Негативные', negative_list)
-    chart_data.add_series('Нейтральные', neutral_list)
-    chart_data.add_series('Позитивные', positive_list)
+    chart_data.add_series('Негативные',  list(map(lambda x: None if x == 0 else x,  negative_list)))
+    chart_data.add_series('Нейтральные',list(map(lambda x: None if x == 0 else x,  neutral_list)))
+    chart_data.add_series('Позитивные',list(map(lambda x: None if x == 0 else x,  positive_list)))
     chart = document.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data)
 
     change_color(chart.plots[0].series[0], RGBColor(243, 172, 172))
