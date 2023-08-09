@@ -272,16 +272,16 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         # except Exception:
         #     pass
         try:
-
-            topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables(session,
-                                                                                                      periods_data, sub,
-                                                                                                      thread_id,
-                                                                                                      reference_ids)
-            # topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables_mocks(session,
-            #                                                                                                 periods_data,
-            #                                                                                                 sub,
-            #                                                                                                 thread_id,
-            #                                                                                                 reference_ids)
+            #
+            # topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables(session,
+            #                                                                                           periods_data, sub,
+            #                                                                                           thread_id,
+            #                                                                                           reference_ids)
+            topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables_mocks(session,
+                                                                                                            periods_data,
+                                                                                                            sub,
+                                                                                                            thread_id,
+                                                                                                            reference_ids)
 
 
         except Exception as e:
@@ -811,7 +811,14 @@ async def get_trust_stat(session, thread_id, reference_ids, periods_data, networ
     except Exception as e:
         logger.error(f"get_trust_stat {e}")
         raise e
-
+def indent_table(table, indent):
+    # noinspection PyProtectedMember
+    tbl_pr = table._element.xpath('w:tblPr')
+    if tbl_pr:
+        e = OxmlElement('w:tblInd')
+        e.set(qn('w:w'), str(indent))
+        e.set(qn('w:type'), 'dxa')
+        tbl_pr[0].append(e)
 
 def add_table_trust(document, table_number, header, table_data_range,
                     table_data_pos_neu,
@@ -832,19 +839,19 @@ def add_table_trust(document, table_number, header, table_data_range,
     parag_table_1.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.RIGHT
 
     table = document.add_table(rows=0, cols=4)
-    table.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.RIGHT
-    table.autofit = True
+    # table.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER
+    table.autofit = False
     table.allow_autofit = False
     if not social:
-        table.columns[0].width = Inches(0.224)
-        table.columns[1].width = Inches(1.748)
-        table.columns[2].width = Inches(0.732)
-        table.columns[3].width = Inches(4.806)
+        table.columns[0].width = Inches(0.252)
+        table.columns[1].width = Inches(1.755)
+        table.columns[2].width = Inches(0.753)
+        table.columns[3].width = Inches(4.743)
     else:
-        table.columns[0].width = Inches(0.224)
-        table.columns[1].width = Inches(1.372)
-        table.columns[2].width = Inches(1.248)
-        table.columns[3].width = Inches(4.669)
+        table.columns[0].width = Inches(0.252)
+        table.columns[1].width = Inches(1.376)
+        table.columns[2].width = Inches(1.255)
+        table.columns[3].width = Inches(4.620)
     table.table.style = initial_document.tables[0].style
     add_col_name(table, social)
 
@@ -871,6 +878,7 @@ def add_table_trust(document, table_number, header, table_data_range,
         add_top5(table, table_data_neg, social)
 
     change_table_font(table)
+    indent_table(table, 110)
 
 
 def add_col_name(table, social):
@@ -1409,8 +1417,8 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
     chart_data = CategoryChartData()
     chart_data.categories = categories_str
 
-    chart_data.add_series('СМИ', update_chart_none(smi_list))
-    chart_data.add_series('Социальные сети', update_chart_none(social_list))
+    chart_data.add_series('СМИ', list(map(lambda x: None if x == 0 else x,  update_chart_none(smi_list))))
+    chart_data.add_series('Социальные сети', list(map(lambda x: None if x == 0 else x,  update_chart_none(social_list))))
     x, y, cx, cy = Inches(-3.5), Inches(0), Inches(7.50), Inches(3.3)
 
     chart = document.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data)
