@@ -29,7 +29,7 @@ from pptx.dml.color import RGBColor
 from pptx.oxml.xmlchemy import OxmlElement
 from pptx.util import Pt, Inches
 from pptx.chart.data import CategoryChartData
-from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
+from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION, XL_TICK_MARK
 from starlette.responses import StreamingResponse
 from docx.shared import Mm
 
@@ -277,11 +277,11 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
                                                                                                       periods_data, sub,
                                                                                                       thread_id,
                                                                                                       reference_ids)
-            #                                                                                                 periods_data,
-            #                                                                                                 sub,
-            #                                                                                                 thread_id,
-            #                                                                                                 referenc
-            # topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables_mocks(session,e_ids)
+            #
+            # topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables_mocks(session,
+            #                                                                                           periods_data, sub,
+            #                                                                                           thread_id,
+            #                                                                                           reference_ids)
 
 
         except Exception as e:
@@ -1334,6 +1334,11 @@ def update_chart_style(chart):
     chart.plots[0].chart.category_axis.tick_labels.font.size = Pt(7)
     chart.plots[0].chart.category_axis.tick_labels.font.name = STYLE
 
+    from pptx.enum.chart import XL_CATEGORY_TYPE
+
+    chart.category_axis.category= XL_CATEGORY_TYPE.AUTOMATIC_SCALE
+
+
     shape_properties = OxmlElement("c:spPr")
     chart.element.append(shape_properties)
 
@@ -1342,7 +1347,8 @@ def update_chart_style(chart):
     scheme_color = OxmlElement("a:noFill")
 
     fill_properties.append(scheme_color)
-
+    chart.category_axis.major_tick_mark= XL_TICK_MARK.CROSS
+    # chart.category_axis.tick_label_position = XL_TICK_LABEL_POSITION.LOW
     chart.value_axis.visible = False
 
 
@@ -1389,7 +1395,7 @@ def add_chart_document(document, chart_number, statistic_chart_title, statist_ch
         else:
             start_date = dateutil.parser.parse(i['item_date']).date()
             categories.append(start_date)
-            categories_str.append(f"{start_date.day}.{months_dict.get(str(start_date.month))}")
+            categories_str.append(f"{start_date.day} {months_dict.get(str(start_date.month))}")
 
     negative_list_smi = [0] * len(categories)
     neutral_list_smi = [0] * len(categories)
