@@ -832,18 +832,19 @@ def add_table_trust(document, table_number, header, table_data_range,
     parag_table_1.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.RIGHT
 
     table = document.add_table(rows=0, cols=4)
-    table.autofit = False
+    table.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.RIGHT
+    table.autofit = True
     table.allow_autofit = False
     if not social:
-        table.columns[0].width = Inches(0.244)
-        table.columns[1].width = Inches(1.768)
-        table.columns[2].width = Inches(0.752)
-        table.columns[3].width = Inches(4.816)
+        table.columns[0].width = Inches(0.224)
+        table.columns[1].width = Inches(1.748)
+        table.columns[2].width = Inches(0.732)
+        table.columns[3].width = Inches(4.806)
     else:
-        table.columns[0].width = Inches(0.244)
-        table.columns[1].width = Inches(1.392)
-        table.columns[2].width = Inches(1.268)
-        table.columns[3].width = Inches(4.679)
+        table.columns[0].width = Inches(0.224)
+        table.columns[1].width = Inches(1.372)
+        table.columns[2].width = Inches(1.248)
+        table.columns[3].width = Inches(4.669)
     table.table.style = initial_document.tables[0].style
     add_col_name(table, social)
 
