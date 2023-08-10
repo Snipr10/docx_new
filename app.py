@@ -310,10 +310,20 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
 
         add_title(document, today_str, [i[0] for i in trust_tables])
         add_table_title = True
+        try:
+            type = trust_tables[0][0][1]
+        except Exception:
+            type = 'Субъект'
+        if type != "Субъект":
+            for p in document.paragraphs:
+                for r in p.runs:
+                    if "убъек" in r.text.lower():
+                        r.text = r.text.replace("Субъект", "Событие").replace("субъекту", "событию").replace(
+                            "субъекта", "события").replace("субъект", "событие")
 
         for topics_table_title, topics_table_data, reference_id in topics_tables:
             add_table1(document, table_number, topics_table_title, topics_table_data, today_str, add_table_title,
-                       posts_info)
+                       posts_info, type)
             table_number += 1
             add_table_title = False
         for p in document.paragraphs:
@@ -325,7 +335,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         add_table_title = True
         for statistic_table_title, statistic_table_date in statistic_tables:
             add_table2(document, table_number, statistic_table_date, statistic_table_title, today_str, add_table_title,
-                       posts_info)
+                       posts_info, type)
             table_number += 1
             add_table_title = False
         for p in document.paragraphs:
@@ -525,7 +535,7 @@ def add_whitespace(inter):
     return res
 
 
-def add_table1(document, table_number, header, records, today, add_table_title, posts_info):
+def add_table1(document, table_number, header, records, today, add_table_title, posts_info, type="Субъект"):
     index = 0
     for i, p in enumerate(document.paragraphs):
         if 'Таблица n. Главные темы публикаций СМИ\n' in p.text:
@@ -536,6 +546,12 @@ def add_table1(document, table_number, header, records, today, add_table_title, 
     table = document.tables[table_number - 1]
     i = 1
     max_count = 0
+    if type!="Субъект":
+        for init_cell in table.rows[0].cells:
+            for p in init_cell.paragraphs:
+                for r in p.runs:
+                    if "убъект" in r.text.lower():
+                        r.text = r.text.replace("Субъект", "Событие").replace("субъекту", "событию").replace("субъекта", "события").replace("субъект", "событие")
     for cell in records:
         if max_count >= 20:
             break
@@ -561,7 +577,7 @@ def add_table1(document, table_number, header, records, today, add_table_title, 
         set_left(row_cells[1])
         i += 1
 
-def add_table2(document, table_number, records, table_type, today, add_table_title, posts_info):
+def add_table2(document, table_number, records, table_type, today, add_table_title, posts_info, type):
     index = 0
     for i, p in enumerate(document.paragraphs):
         if 'СМИ' == table_type:
@@ -579,6 +595,14 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
     except Exception:
         pass
     table = document.tables[table_number - 1]
+    if type != "Субъект":
+        for init_cell in table.rows[0].cells:
+            for p in init_cell.paragraphs:
+                for r in p.runs:
+                    if "убъект" in r.text.lower():
+                        r.text = r.text.replace("Субъект", "Событие").replace("субъекту", "событию").replace("субъекта",
+                                                                                                             "события").replace(
+                            "субъект", "событие")
 
     max_count = 0
     # table.style = 'TableGrid'
