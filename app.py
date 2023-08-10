@@ -44,6 +44,9 @@ from settings import SUBECT_URL, SUBECT_TOPIC_URL, STATISTIC_URL, STATISTIC_TRUS
 COOKIES = []
 initial_document = Document("test0.docx")
 
+def open_document():
+    return Document("test0.docx")
+
 KOM_NAME = "Комитет по образованию"
 STYLE = "Times New Roman"
 PT = Pt(10)
@@ -260,7 +263,6 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
                 periods_data["_to_data"] = today_all.strftime('%Y-%m-%d %H:%M:%S')
         logger.error(f"document")
 
-        document = deepcopy(initial_document)
 
         logger.error(f"sub")
         sub = await get_start_date(session)
@@ -308,6 +310,8 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         table_number = 1
         logger.error(f"add_title")
 
+        document = open_document()
+
         add_title(document, today_str, [i[0] for i in trust_tables])
         add_table_title = True
         try:
@@ -352,20 +356,21 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         #         break
 
         for statistic_chart_title, statist_chart_data in charts_data:
-            if add_chart_title:
-                if chart_number != 1:
-                    document.add_page_break()
-                add_title_text(document, "Динамика распространения публикаций", True,
-                               docx.enum.text.WD_ALIGN_PARAGRAPH.LEFT, document.paragraphs[-1])
-                add_chart_title = False
-            chart_number = add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data,
-                                              today_str,
-                                              today_all,
-                                              periods_data)
-            chart_number += 1
+            if (len(statist_chart_data['smi']) + len(statist_chart_data['social'])) >0:
+                if add_chart_title:
+                    if chart_number != 1:
+                        document.add_page_break()
+                    add_title_text(document, "Динамика распространения публикаций", True,
+                                   docx.enum.text.WD_ALIGN_PARAGRAPH.LEFT, document.paragraphs[-1])
+                    add_chart_title = False
+                chart_number = add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data,
+                                                  today_str,
+                                                  today_all,
+                                                  periods_data)
+                chart_number += 1
 
-        if chart_number % 2 == 0:
-            document.add_page_break()
+            if chart_number % 2 == 0:
+                document.add_page_break()
 
         add_title_text(document, "Топы публикаций СМИ и социальных сетей", True, docx.enum.text.WD_ALIGN_PARAGRAPH.LEFT)
 
@@ -876,7 +881,7 @@ def add_table_trust(document, table_number, header, table_data_range,
         table.columns[1].width = Inches(1.376)
         table.columns[2].width = Inches(1.255)
         table.columns[3].width = Inches(4.620)
-    table.table.style = initial_document.tables[0].style
+    table.table.style = open_document().tables[0].style
     add_col_name(table, social)
 
     for cell in table.rows[0].cells[1:]:
@@ -1009,20 +1014,20 @@ def add_top5(table, table_data, social):
             set_center(row_cells[0], "bottom")
             set_cell_vertical_alignment(row_cells[1], "bottom")
             set_cell_vertical_alignment(row_cells[3], "bottom")
-            for paragraph in row_cells[3]:
-                for run in paragraph.runs:
-                    font = run.font
-                    font.size = Pt(10)
-                    font.name = STYLE
-            for paragraph in row_cells[1]:
-                for run in paragraph.runs:
-                    font = run.font
-                    font.size = Pt(10)
-                    font.name = STYLE
-            for cell in row_cells:
-                fmt = cell.paragraphs[0].paragraph_format
-                fmt.space_before = Mm(0)
-                fmt.space_after = Mm(0)
+            # for paragraph in row_cells[3]:
+            #     for run in paragraph.runs:
+            #         font = run.font
+            #         font.size = Pt(10)
+            #         font.name = STYLE
+            # for paragraph in row_cells[1]:
+            #     for run in paragraph.runs:
+            #         font = run.font
+            #         font.size = Pt(10)
+            #         font.name = STYLE
+            # for cell in row_cells:
+            #     fmt = cell.paragraphs[0].paragraph_format
+            #     fmt.space_before = Mm(0)
+            #     fmt.space_after = Mm(0)
         except Exception as e:
             logger.error(f"add_top5 {e}")
 
