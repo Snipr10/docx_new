@@ -350,16 +350,16 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
 
         chart_number = 1
         add_chart_title = True
-        # for p in reversed(document.paragraphs):
-        #     if not p.text.strip():
-        #         delete_paragraph(p)
-        #         break
-
+        for p in reversed(document.paragraphs):
+            if not p.text.strip():
+                delete_paragraph(p)
+            else:
+                break
         for statistic_chart_title, statist_chart_data in charts_data:
             if (len(statist_chart_data['smi']) + len(statist_chart_data['social'])) >0:
                 if add_chart_title:
-                    if chart_number != 1:
-                        document.add_page_break()
+                    # if chart_number != 1:
+                    document.add_page_break()
                     add_title_text(document, "Динамика распространения публикаций", True,
                                    docx.enum.text.WD_ALIGN_PARAGRAPH.LEFT, document.paragraphs[-1])
                     add_chart_title = False
