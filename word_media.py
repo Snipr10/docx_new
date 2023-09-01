@@ -327,44 +327,51 @@ async def docx_media(thread_id, _from, _to, referenceFilter, network_id, user_id
     insertHR(document.add_paragraph(), line="single")
     if _sort:
         posts.sort(key=lambda x: str(x['author']))
-    for post in posts:
-        post_paragraph = document.add_paragraph()
-        paragraph_run = post_paragraph.add_run(post.get("author", ""), style=STYLE)
-        paragraph_run.bold = True
-        paragraph_run.font.size = Pt(12)
-        paragraph_run = post_paragraph.add_run(f" {dateutil.parser.parse(post.get('created_date') or '').strftime(DATE_FORMAT)}"
-                                                   "\n ", style=STYLE)
-        paragraph_run.font.size = Pt(12)
+    for i, post in enumerate(posts):
+        try:
+            post_paragraph = document.add_paragraph()
+            paragraph_run = post_paragraph.add_run(post.get("author", ""), style=STYLE)
+            paragraph_run.bold = True
+            paragraph_run.font.size = Pt(12)
+            paragraph_run = post_paragraph.add_run(f" {dateutil.parser.parse(post.get('created_date') or '').strftime(DATE_FORMAT)}"
+                                                       "\n ", style=STYLE)
+            paragraph_run.font.size = Pt(12)
 
-        paragraph_ilnk = document.add_paragraph()
-        url = post['uri'] or ''
-        # if len(url) > 65:
-         #     url = url[:65]
-        paragraph_link = paragraph_ilnk.add_run(url, style=STYLE)
-        paragraph_link.font.size = Pt(12)
+            paragraph_ilnk = document.add_paragraph()
+            url = post['uri'] or ''
+            # if len(url) > 65:
+             #     url = url[:65]
+            paragraph_link = paragraph_ilnk.add_run(url, style=STYLE)
+            paragraph_link.font.size = Pt(12)
 
-        add_hyperlink_into_run(paragraph_ilnk, paragraph_link, post.get('uri') or '')
+            add_hyperlink_into_run(paragraph_ilnk, paragraph_link, post.get('uri') or '')
 
-        if post['title']:
-            post_paragraph_title = document.add_paragraph()
-            paragraph_title = post_paragraph_title.add_run(post.get('title', ''), style=STYLE)
-            paragraph_title.bold = True
-            paragraph_title.font.size = Pt(12)
-        if post.get("friendly"):
-            post_paragraph_friendly = document.add_paragraph()
+            if post['title']:
+                post_paragraph_title = document.add_paragraph()
+                paragraph_title = post_paragraph_title.add_run(post.get('title', ''), style=STYLE)
+                paragraph_title.bold = True
+                paragraph_title.font.size = Pt(12)
+            if post.get("friendly"):
+                post_paragraph_friendly = document.add_paragraph()
 
-            post_paragraph_friendly = post_paragraph_friendly.add_run("Дружественный источник!", style=STYLE)
-            post_paragraph_friendly.font.size = Pt(12)
-            post_paragraph_friendly.bold = True
-            post_paragraph_friendly.italic = True
+                post_paragraph_friendly = post_paragraph_friendly.add_run("Дружественный источник!", style=STYLE)
+                post_paragraph_friendly.font.size = Pt(12)
+                post_paragraph_friendly.bold = True
+                post_paragraph_friendly.italic = True
 
-        post_paragraph_text = document.add_paragraph()
-        cleantext = re.sub(CLEANR, '', post.get('text') or '')
-        post_paragraph_text = post_paragraph_text.add_run(cleantext, style=STYLE)
-        post_paragraph_text.font.size = Pt(12)
+            post_paragraph_text = document.add_paragraph()
+            cleantext = re.sub(CLEANR, '', post.get('text') or '')
+            try:
+                post_paragraph_text = post_paragraph_text.add_run(cleantext, style=STYLE)
+            except Exception:
+                post_paragraph_text = post_paragraph_text.add_run(re.sub(u'[^\u0020-\uD7FF\u0009\u000A\u000D\uE000-\uFFFD\U00010000-\U0010FFFF]+', '', cleantext), style=STYLE)
 
-        hr = document.add_paragraph()
-        hr.style.font.size = Pt(1)
+            post_paragraph_text.font.size = Pt(12)
 
-        insertHR(hr)
+            hr = document.add_paragraph()
+            hr.style.font.size = Pt(1)
+
+            insertHR(hr)
+        except Exception as e:
+            print(e)
     return document

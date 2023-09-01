@@ -331,7 +331,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
             table_number += 1
             add_table_title = False
         for p in document.paragraphs:
-            if 'Таблица n. Главные темы публикаций СМИ\n' in p.text:
+            if 'Таблица n. Главные темы публикаций в СМИ\n' in p.text:
                 delete_paragraph(p)
                 document.tables[table_number - 1]._element.getparent().remove(
                     document.tables[table_number - 1]._element)
@@ -361,7 +361,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
                     # if chart_number != 1:
                     document.add_page_break()
                     add_title_text(document, "Динамика распространения публикаций", True,
-                                   docx.enum.text.WD_ALIGN_PARAGRAPH.LEFT, document.paragraphs[-1])
+                                   docx.enum.text   .WD_ALIGN_PARAGRAPH.LEFT, document.paragraphs[-1])
                     add_chart_title = False
                 chart_number = add_chart_document(document, chart_number, statistic_chart_title, statist_chart_data,
                                                   today_str,
@@ -543,7 +543,7 @@ def add_whitespace(inter):
 def add_table1(document, table_number, header, records, today, add_table_title, posts_info, type="Субъект"):
     index = 0
     for i, p in enumerate(document.paragraphs):
-        if 'Таблица n. Главные темы публикаций СМИ\n' in p.text:
+        if 'Таблица n. Главные темы публикаций в СМИ\n' in p.text:
             index = i
             break
     document.paragraphs[index].runs[1].text = str(table_number)
@@ -586,7 +586,7 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
     index = 0
     for i, p in enumerate(document.paragraphs):
         if 'СМИ' == table_type:
-            if "Таблица n. Общая статистика публикаций СМИ" in p.text:
+            if "Таблица n. Общая статистика публикаций в СМИ" in p.text:
                 index = i
                 break
         else:
@@ -1366,7 +1366,8 @@ def update_chart_style(chart):
     from pptx.enum.chart import XL_CATEGORY_TYPE
 
     chart.category_axis.category= XL_CATEGORY_TYPE.AUTOMATIC_SCALE
-
+    txPr = data_labels._element.get_or_add_txPr()
+    txPr.bodyPr.set('rot', '-5400000')
 
     shape_properties = OxmlElement("c:spPr")
     chart.element.append(shape_properties)
