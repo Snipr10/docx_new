@@ -42,10 +42,10 @@ from log_conf import log_config
 from settings import SUBECT_URL, SUBECT_TOPIC_URL, STATISTIC_URL, STATISTIC_TRUST_GRAPH, GET_TRUST_URL, NETWORK_IDS
 
 COOKIES = []
-initial_document = Document("test0.docx")
+initial_document = Document("test_0_2.docx")
 
 def open_document():
-    return Document("test0.docx")
+    return Document("test_0_2.docx")
 
 KOM_NAME = "Комитет по образованию"
 STYLE = "Times New Roman"
@@ -339,7 +339,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         add_table_title = True
         for statistic_table_title, statistic_table_date in statistic_tables:
             add_table2(document, table_number, statistic_table_date, statistic_table_title, today_str, add_table_title,
-                       posts_info, type)
+                       posts_info, type, len(statistic_tables))
             table_number += 1
             add_table_title = False
         for p in document.paragraphs:
@@ -454,6 +454,9 @@ def parag_format(parag):
 def add_title(document, today, sub):
     document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("1", ", ".join(
         [f"«{s[0]}»" for s in sub])).replace("2", today)
+    document.paragraphs[7].runs[1].text = document.paragraphs[7].runs[1].text.replace("1", ", ".join(
+        [f"«{s[0]}»" for s in sub]))
+    document.paragraphs[7].runs[2].text = document.paragraphs[7].runs[2].text.replace("2", today)
     if sub[0][1].lower() == "субъект":
         document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("/событию", "")
     else:
@@ -467,7 +470,7 @@ def add_title_text(document, text, is_bold, alignment=docx.enum.text.WD_ALIGN_PA
     fmt = parag_title.paragraph_format
     # fmt.first_line_indent = Mm(-15)
     fmt.right_indent = Mm(-25)
-    fmt.space_before = Mm(15)
+    fmt.space_before = Mm(0)
     fmt.space_after = Mm(3)
     # fmt.first_line_indent = Mm(-10)
     fmt.left_indent = Mm(10)
@@ -582,7 +585,7 @@ def add_table1(document, table_number, header, records, today, add_table_title, 
         set_left(row_cells[1])
         i += 1
 
-def add_table2(document, table_number, records, table_type, today, add_table_title, posts_info, type):
+def add_table2(document, table_number, records, table_type, today, add_table_title, posts_info, type, stat_len=0):
     index = 0
     for i, p in enumerate(document.paragraphs):
         if 'СМИ' == table_type:
@@ -595,11 +598,20 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
                 break
     document.paragraphs[index].runs[1].text = str(table_number)
     document.paragraphs[index].runs[2].text = document.paragraphs[index].runs[2].text.replace("за период", today)
+
     try:
         document.paragraphs[index].runs[3].text = document.paragraphs[index].runs[3].text.replace("за период", today)
     except Exception:
         pass
-    table = document.tables[table_number - 1]
+    try:
+        document.paragraphs[index].runs[4].text = document.paragraphs[index].runs[4].text.replace("за период", today)
+    except Exception:
+        pass
+    if 'СМИ' != table_type  and stat_len == 1:
+        table = document.tables[table_number]
+    else:
+        table = document.tables[table_number -1]
+
     if type != "Субъект":
         for init_cell in table.rows[0].cells:
             for p in init_cell.paragraphs:
@@ -853,7 +865,7 @@ def add_table_trust(document, table_number, header, table_data_range,
                     table_data_pos_neu,
                     table_data_neg, today, doc_type, first, social=False):
     parag_table_1 = document.add_paragraph()
-    p_text = f' Таблица {table_number}. Топ публикаций {doc_type} {today}'
+    p_text = f' Таблица {table_number}. Топ публикаций в {doc_type} {today.replace("на", "за")}'
 
     parag_table_1.add_run(
         p_text,
@@ -1507,8 +1519,11 @@ def add_table_tonal(document, chart_title_type_, chart_number, statistic_chart_t
     change_color(chart.plots[0].series[2], RGBColor(200, 218, 145))
 
     update_chart_style(chart)
+    pict_chart = chart_title_type_
+    if not pict_chart.startswith("в"):
+        pict_chart = "в " + pict_chart
     add_chart_pict(document.paragraphs[-1],
-                   f"Рисунок {chart_number}. Динамика распространения публикаций {chart_title_type_},\nсоотношение по тональности {today}")
+                   f"Рисунок {chart_number}. Динамика распространения публикаций {pict_chart},\nсоотношение по тональности {today}")
 
 
 if __name__ == "__main__":
