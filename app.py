@@ -865,7 +865,10 @@ def add_table_trust(document, table_number, header, table_data_range,
                     table_data_pos_neu,
                     table_data_neg, today, doc_type, first, social=False):
     parag_table_1 = document.add_paragraph()
-    p_text = f' Таблица {table_number}. Топ публикаций в {doc_type} {today.replace("на", "за")}'
+    pict_chart = doc_type
+    if not pict_chart.startswith("в"):
+        pict_chart = "в " + pict_chart
+    p_text = f' Таблица {table_number}. Топ публикаций {pict_chart} {today.replace("на", "за")}'
 
     parag_table_1.add_run(
         p_text,
