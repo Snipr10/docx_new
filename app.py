@@ -460,7 +460,7 @@ def add_title(document, today, sub):
     if sub[0][1].lower() == "субъект":
         document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("/событию", "")
     else:
-        document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("субъекту/", "")
+        document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("событию/", "")
 
 
 def add_title_text(document, text, is_bold, alignment=docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER, parag_title=None):
@@ -596,17 +596,12 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
             if "Таблица n. Общая статистика публикаций в социальных сетях" in p.text:
                 index = i
                 break
-    document.paragraphs[index].runs[1].text = str(table_number)
-    document.paragraphs[index].runs[2].text = document.paragraphs[index].runs[2].text.replace("за период", today)
-
-    try:
-        document.paragraphs[index].runs[3].text = document.paragraphs[index].runs[3].text.replace("за период", today)
-    except Exception:
-        pass
-    try:
-        document.paragraphs[index].runs[4].text = document.paragraphs[index].runs[4].text.replace("за период", today)
-    except Exception:
-        pass
+    for i in range(5):
+        try:
+            document.paragraphs[index].runs[i].text = document.paragraphs[index].runs[i].text.replace("n", str(table_number))
+            document.paragraphs[index].runs[i].text = document.paragraphs[index].runs[i].text.replace("за период", today)
+        except Exception:
+            pass
     if 'СМИ' != table_type  and stat_len == 1:
         table = document.tables[table_number]
     else:
