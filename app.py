@@ -275,7 +275,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         #     pass
         try:
             #
-            topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables(session,
+            topics_tables, statistic_tables, trust_tables, charts_data, posts_info, names = await get_tables(session,
                                                                                                       periods_data, sub,
                                                                                                       thread_id,
                                                                                                       reference_ids)
@@ -312,7 +312,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
 
         document = open_document()
 
-        add_title(document, today_str, [i[0] for i in trust_tables])
+        add_title(document, today_str, names)
         add_table_title = True
         try:
             type = trust_tables[0][0][1]
@@ -343,7 +343,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
             table_number += 1
             add_table_title = False
         for p in document.paragraphs:
-            if "Таблица n. Общая статистика публикаций СМИ" in p.text or "Таблица n. Общая статистика публикаций в социальных сетях" in p.text:
+            if "Таблица n. Общая статистика публикаций в СМИ" in p.text or "Таблица n. Общая статистика публикаций в социальных сетях" in p.text:
                 delete_paragraph(p)
                 document.tables[table_number - 1]._element.getparent().remove(
                     document.tables[table_number - 1]._element)
@@ -453,9 +453,9 @@ def parag_format(parag):
 
 def add_title(document, today, sub):
     document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("1", ", ".join(
-        [f"«{s[0]}»" for s in sub])).replace("2", today)
+        [f"«{s}»" for s in sub])).replace("2", today)
     document.paragraphs[7].runs[1].text = document.paragraphs[7].runs[1].text.replace("1", ", ".join(
-        [f"«{s[0]}»" for s in sub]))
+        [f"«{s}»" for s in sub]))
     document.paragraphs[7].runs[2].text = document.paragraphs[7].runs[2].text.replace("2", today)
     if sub[0][1].lower() == "субъект":
         document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("/событию", "")
@@ -550,7 +550,11 @@ def add_table1(document, table_number, header, records, today, add_table_title, 
             index = i
             break
     document.paragraphs[index].runs[1].text = str(table_number)
-    document.paragraphs[index].runs[2].text = document.paragraphs[index].runs[2].text.replace("за период", today)
+    for j in range(1, 5):
+        try:
+            document.paragraphs[index].runs[j].text = document.paragraphs[index].runs[j].text.replace("за период", today)
+        except Exception:
+            pass
     table = document.tables[table_number - 1]
     i = 1
     max_count = 0
@@ -596,10 +600,16 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
             if "Таблица n. Общая статистика публикаций в социальных сетях" in p.text:
                 index = i
                 break
+    delete_next = False
     for i in range(5):
         try:
-            document.paragraphs[index].runs[i].text = document.paragraphs[index].runs[i].text.replace("n", str(table_number))
-            document.paragraphs[index].runs[i].text = document.paragraphs[index].runs[i].text.replace("за период", today)
+            if delete_next:
+                document.paragraphs[index].runs[i].text = ''
+            else:
+                document.paragraphs[index].runs[i].text = document.paragraphs[index].runs[i].text.replace("n", str(table_number))
+                if "за период" in document.paragraphs[index].runs[i].text:
+                    document.paragraphs[index].runs[i].text = document.paragraphs[index].runs[i].text.replace("за период", today)
+                    delete_next = True
         except Exception:
             pass
     if 'СМИ' != table_type  and stat_len == 1:
@@ -1109,16 +1119,17 @@ async def get_trust(session, periods_data, sub, thread_id, reference_ids):
             network_ids = NETWORK_IDS
 
             table_gather = []
-
+            names = []
             for s in sub:
                 reference_id = s['id']
                 if reference_id in reference_ids:
+                    names.append(s['keyword'])
                     table_gather.append(
                         get_trust_for_sub(session, reference_id, network_ids, s['keyword'], periods_data, thread_id, s['reference_id']))
             for trust_state_date in await asyncio.gather(*table_gather):
                 if trust_state_date is not None:
                     tables.append(trust_state_date)
-            return tables
+            return tables, names
         except Exception as e:
             logger.error(f"get_trust {e}")
             raise e
@@ -1256,7 +1267,7 @@ async def post_static(session, reference_id, thread_id, periods_data, chart_name
 
 
 async def get_tables(session, periods_data, sub, thread_id, reference_ids):
-    trust_tables = await get_trust(session, periods_data, sub, thread_id, reference_ids)
+    trust_tables, names = await get_trust(session, periods_data, sub, thread_id, reference_ids)
 
     topics_tables = await add_topics(session, periods_data, sub, thread_id, reference_ids)
 
@@ -1271,7 +1282,7 @@ async def get_tables(session, periods_data, sub, thread_id, reference_ids):
     #     get_posts_info(session, thread_id, periods_data, reference_ids)
     # )
 
-    return topics_tables, statistic_tables, trust_tables, charts_data, posts_info
+    return topics_tables, statistic_tables, trust_tables, charts_data, posts_info, names
 
 
 def getParagraphRuns(paragraph):
