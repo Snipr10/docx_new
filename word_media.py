@@ -171,9 +171,9 @@ async def get_posts(session, thread_id, _from, _to, network_id, referenceFilter,
             "from": _from,
             "to": _to,
             "limit": limit, "start": start, "sort": {"type": "date", "order": "desc", "name": "dateDown"},
-            "friendly": friendly_ids,
             "trustoption": trustoption,
             "filter": {"network_id": network_id,
+                       "friendly": friendly_ids,
                        "referenceFilter": referenceFilter, "repostoption": "whatever"}
         }
         from resp import post
@@ -202,7 +202,7 @@ async def get_posts(session, thread_id, _from, _to, network_id, referenceFilter,
 
 
 def check_friendly(post):
-    if post.get("friendly") in [2, 1, "2", "1"]:
+    if post.get("friendly") in [2, 1, "2", "1", True]:
         return True
     return False
 

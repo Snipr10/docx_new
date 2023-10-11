@@ -15,7 +15,7 @@ from docx.oxml.ns import nsdecls
 from docx.oxml import parse_xml
 from docx.enum.style import WD_STYLE_TYPE
 from docx.shared import Inches, Pt
-from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT, WD_LINE_SPACING
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
@@ -39,13 +39,15 @@ from tonal_media import docx_tonal
 from word_media import docx_media, login, convert_date, get_posts_info
 from logging.config import dictConfig
 from log_conf import log_config
-from settings import SUBECT_URL, SUBECT_TOPIC_URL, STATISTIC_URL, STATISTIC_TRUST_GRAPH, GET_TRUST_URL, NETWORK_IDS
+from settings import SUBECT_URL, SUBECT_TOPIC_URL, STATISTIC_URL, STATISTIC_TRUST_GRAPH, GET_TRUST_URL, NETWORK_IDS, THREAD_STATS
 
 COOKIES = []
-initial_document = Document("test_0_2.docx")
+initial_document = Document("test_new_02.docx")
 
-def open_document():
-    return Document("test_0_2.docx")
+def open_document(friendly=True):
+    if friendly:
+        return Document("test_new_02.docx")
+    return Document("test_new_without_fr_02.docx")
 
 KOM_NAME = "Комитет по образованию"
 STYLE = "Times New Roman"
@@ -88,7 +90,7 @@ async def index(request: Request):
     period = body_json.get('period', None)
     _from_data = body_json.get('from', None)
     _to_data = body_json.get('to', None)
-
+    friendly = body_json.get('friendly', True)
     periods_data = {"period": period, "_from_data": _from_data, "_to_data": _to_data}
     reference_ids_str = body_json.get('reference_ids')
 
@@ -104,7 +106,7 @@ async def index(request: Request):
     while attempt < max:
         try:
             document = await creater(reference_ids, body_json.get('login'), body_json.get('password'),
-                                     int(body_json.get('thread_id')), periods_data)
+                                     int(body_json.get('thread_id')), periods_data, friendly)
             f = BytesIO()
 
             document.save(f)
@@ -232,7 +234,7 @@ def delete_paragraph(paragraph):
     p._p = p._element = None
 
 
-async def creater(reference_ids, login_user, password, thread_id, periods_data):
+async def creater(reference_ids, login_user, password, thread_id, periods_data, friendly_flag=True):
     async with httpx.AsyncClient() as session:
 
         await login(session, login_user, password)
@@ -310,14 +312,15 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
         table_number = 1
         logger.error(f"add_title")
 
-        document = open_document()
+        document = open_document(friendly_flag)
 
-        add_title(document, today_str, names)
-        add_table_title = True
         try:
             type = trust_tables[0][0][1]
         except Exception:
             type = 'Субъект'
+        add_title(document, today_str, names, type)
+        add_table_title = True
+
         if type != "Субъект":
             for p in document.paragraphs:
                 for r in p.runs:
@@ -337,24 +340,73 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data):
                     document.tables[table_number - 1]._element)
 
         add_table_title = True
+        friendly_list = []
         for statistic_table_title, statistic_table_date in statistic_tables:
             add_table2(document, table_number, statistic_table_date, statistic_table_title, today_str, add_table_title,
-                       posts_info, type, len(statistic_tables))
+                       posts_info, type, len(statistic_tables), friendly_list=friendly_list, friendly_flag=friendly_flag)
             table_number += 1
             add_table_title = False
+
         for p in document.paragraphs:
             if "Таблица n. Общая статистика публикаций в СМИ" in p.text or "Таблица n. Общая статистика публикаций в социальных сетях" in p.text:
                 delete_paragraph(p)
                 document.tables[table_number - 1]._element.getparent().remove(
                     document.tables[table_number - 1]._element)
+        delete_all = True
+        try:
+            if document.tables[-2].rows[0].cells[-1].text  == "Охват":
+                all = 0
+                pos = 0
+                neg = 0
+                att = 0
+                for _, statistic_table_date in statistic_tables:
+                    for s in statistic_table_date:
+                        pos += int(s['positive']['posts'])
+                        neg += int(s['negative']['posts'])
+                        all += int(s['total']['posts'])
+                        att += int(s['total']['attendance'])
+
+                delete_all = False
+                i = 0
+                cells = document.tables[-1].rows[0].cells
+
+                if friendly_flag:
+                    i = 0
+                    cells[1].text = add_whitespace(str(sum(friendly_list)))
+                    set_center(cells[1])
+                else:
+                    i = 1
+
+
+                cells[5-i].text = add_whitespace(str(all))
+                set_center(cells[2-i])
+                cells[2-i].text = add_whitespace(str(pos))
+                set_center(cells[3-i])
+                cells[3-i].text = add_whitespace(str(neg))
+                set_center(cells[4-i])
+                cells[4-i].text = add_whitespace(str(all - pos - neg))
+                set_center(cells[6-i])
+                cells[6-i].text = add_whitespace(str(att))
+            for cell in cells:
+                set_center(cell, align="bottom")
+                fmt = cell.paragraphs[0].paragraph_format
+                fmt.space_before = Mm(0)
+                fmt.space_after = Mm(0)
+            set_left(cells[0])
+        except Exception:
+            pass
+        if delete_all:
+            document.tables[-1]._element.getparent().remove(
+                document.tables[-1]._element)
+
 
         chart_number = 1
         add_chart_title = True
-        for p in reversed(document.paragraphs):
-            if not p.text.strip():
-                delete_paragraph(p)
-            else:
-                break
+        # for p in reversed(document.paragraphs):
+        #     if not p.text.strip():
+        #         delete_paragraph(p)
+        #     else:
+        #         break
         for statistic_chart_title, statist_chart_data in charts_data:
             if (len(statist_chart_data['smi']) + len(statist_chart_data['social'])) >0:
                 if add_chart_title:
@@ -432,6 +484,8 @@ def change_table_font(table):
             fmt = cell.paragraphs[0].paragraph_format
             fmt.space_before = Mm(0)
             fmt.space_after = Mm(0)
+            fmt.line_spacing_rule = WD_LINE_SPACING.SINGLE
+
 
 def update_pagagraphs(paragraphs):
     for paragraph in paragraphs:
@@ -451,16 +505,16 @@ def parag_format(parag):
     fmt.first_line_indent = Mm(-15)
 
 
-def add_title(document, today, sub):
-    document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("1", ", ".join(
+def add_title(document, today, sub, type):
+    document.paragraphs[7].runs[3].text = document.paragraphs[7].runs[3].text.replace("1", ", ".join(
         [f"«{s}»" for s in sub])).replace("2", today)
-    document.paragraphs[7].runs[1].text = document.paragraphs[7].runs[1].text.replace("1", ", ".join(
+    document.paragraphs[7].runs[3].text = document.paragraphs[7].runs[3].text.replace("1", ", ".join(
         [f"«{s}»" for s in sub]))
-    document.paragraphs[7].runs[2].text = document.paragraphs[7].runs[2].text.replace("2", today)
-    if sub[0][1].lower() == "субъект":
-        document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("/событию", "")
+    document.paragraphs[7].runs[5].text = document.paragraphs[7].runs[5].text.replace("2", today)
+    if type.lower() == "субъект":
+        document.paragraphs[7].runs[1].text = document.paragraphs[7].runs[1].text.replace("/событию", "").replace("событию", "субъекту")
     else:
-        document.paragraphs[7].runs[0].text = document.paragraphs[7].runs[0].text.replace("событию/", "")
+        document.paragraphs[7].runs[1].text = document.paragraphs[7].runs[1].text.replace("событию/", "")
 
 
 def add_title_text(document, text, is_bold, alignment=docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER, parag_title=None):
@@ -485,7 +539,8 @@ def add_title_text(document, text, is_bold, alignment=docx.enum.text.WD_ALIGN_PA
     parag_title.style.font.size = docx.shared.Pt(12)
     parag_title.runs[-1].font.size = docx.shared.Pt(12)
     parag_title.runs[-1].italic = True
-
+    parag_title.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+    parag_title.paragraph_format.space_after=101600
 
 def set_cell_vertical_alignment(cell, align="center"):
     try:
@@ -586,10 +641,14 @@ def add_table1(document, table_number, header, records, today, add_table_title, 
             fmt = cell.paragraphs[0].paragraph_format
             fmt.space_before = Mm(0)
             fmt.space_after = Mm(0)
+            fmt.line_spacing_rule = WD_LINE_SPACING.SINGLE
+
         set_left(row_cells[1])
         i += 1
 
-def add_table2(document, table_number, records, table_type, today, add_table_title, posts_info, type, stat_len=0):
+def add_table2(document, table_number, records, table_type, today, add_table_title, posts_info, type, stat_len=0,
+               friendly_list=None, friendly_flag=True
+               ):
     index = 0
     for i, p in enumerate(document.paragraphs):
         if 'СМИ' == table_type:
@@ -640,28 +699,41 @@ def add_table2(document, table_number, records, table_type, today, add_table_tit
         negative = int(cell['negative']['posts'])
         netural = int(cell['netural']['posts'])
         total = int(cell['total']['posts'])
+        attendance = int(cell['total']['attendance'])
 
-        row_cells[1].text = add_whitespace(str(total))
-        set_center(row_cells[1])
+
         _, _, _, _, friendly_smi, friendly_social = posts_info[cell["reference_id"]]
         friendly = 0
         if table_type == "СМИ":
             friendly = friendly_smi
         else:
             friendly = friendly_social
-        row_cells[2].text = add_whitespace(str(friendly))
-        set_center(row_cells[2])
-        row_cells[3].text = add_whitespace(str(positive))
-        set_center(row_cells[3])
-        row_cells[4].text = add_whitespace(str(negative))
-        set_center(row_cells[4])
-        row_cells[5].text = add_whitespace(str(total - positive - negative))
+
+        if friendly_flag:
+            i = 0
+            row_cells[1].text = add_whitespace(str(friendly))
+        else:
+            i = 1
+
+        friendly_list.append(friendly)
+        # set_center(row_cells[1])
+        row_cells[5-i].text = add_whitespace(str(total))
+        set_center(row_cells[2-i])
+        row_cells[2-i].text = add_whitespace(str(positive))
+        set_center(row_cells[3-i])
+        row_cells[3-i].text = add_whitespace(str(negative))
+        set_center(row_cells[4-i])
+        row_cells[4-i].text = add_whitespace(str(total - positive - negative))
+        set_center(row_cells[6-i])
+        row_cells[6-i].text = add_whitespace(str(attendance))
 
         for cell in row_cells:
             set_center(cell, align="bottom")
             fmt = cell.paragraphs[0].paragraph_format
             fmt.space_before = Mm(0)
             fmt.space_after = Mm(0)
+            fmt.line_spacing_rule = WD_LINE_SPACING.SINGLE
+
         set_left(row_cells[0])
 
 
@@ -738,51 +810,66 @@ def get_from_date_datetime(period):
 
 async def subects_static(session, reference_id, thread_id, periods_data, table_name):
     try:
-        payload = {
-            "thread_id": thread_id,
-            "from": periods_data.get("_from_data"),
-            "to": periods_data.get("_to_data"),
-            "filter": {"referenceFilter": [reference_id]}
-        }
-        response = await post(session, STATISTIC_URL, payload)
-
+        smi_task = asyncio.create_task(post(session, THREAD_STATS, {
+        "thread_id": thread_id,
+        "referenceFilter": [reference_id],
+        "type": "smi",
+        "smi_type": "any",
+        "from": periods_data.get("_from_data"),
+        "to": periods_data.get("_to_data"),
+        }))
+        social_task = asyncio.create_task(post(session, THREAD_STATS, {
+        "thread_id": thread_id,
+        "referenceFilter": [reference_id],
+        "type": "social",
+        "from": periods_data.get("_from_data"),
+        "to": periods_data.get("_to_data"),
+        }))
         res_gs = {}
         res_soc = {}
-        keys = ["fb", "vk", "tw", "tg", "ig", "yt"]
         try:
-            res = response.json()
-            if res.get("gs", {}).get("total", {}).get("posts", 0) is not None and res.get("gs", {}).get("total",
-                                                                                                        {}).get(
-                "posts", 0) > 0:
-                res_gs = response.json().get("gs", {})
-            total_posts = 0
-            total_positive = 0
-            total_negative = 0
-            total_netural = 0
-            for k in keys:
-                total_posts += res[k]['total']['posts']
-                total_positive += res[k]['positive']['posts']
-                total_negative += res[k]['negative']['posts']
-                total_netural += res[k]['netural']['posts']
-
+            await social_task
+            social_stats = social_task.result().json()
             social = {
                 'total': {
-                    'posts': total_posts
+                    'posts': social_stats['stats']['post_count'],
+                    'attendance': social_stats['stats']['attendance']
                 },
                 'positive': {
-                    'posts': total_positive
+                    'posts': social_stats['stats']['positive']['posts_count']
                 },
                 'negative': {
-                    'posts': total_negative
+                    'posts': social_stats['stats']['negative']['posts_count']
                 },
                 'netural': {
-                    'posts': total_netural
+                    'posts': social_stats['stats']['post_count'] - social_stats['stats']['positive']['posts_count'] - social_stats['stats']['negative']['posts_count']
                 }
             }
-            if social.get("total", {}).get("posts", 0) > 0:
-                res_soc = social
+            res_soc = social
         except Exception as e:
-            logger.error(f"subects_static {e} {response.text}")
+            logger.error(f"subects_static {e} ")
+        try:
+            await smi_task
+            smi_stats = smi_task.result().json()
+
+            gos = {
+                'total': {
+                    'posts': smi_stats['stats']['post_count'],
+                    'attendance': smi_stats['stats']['attendance']
+                },
+                'positive': {
+                    'posts': smi_stats['stats']['positive']['posts_count']
+                },
+                'negative': {
+                    'posts': smi_stats['stats']['negative']['posts_count']
+                },
+                'netural': {
+                    'posts': smi_stats['stats']['post_count'] - smi_stats['stats']['positive']['posts_count'] - smi_stats['stats']['negative']['posts_count']
+                }
+            }
+            res_gs = gos
+        except Exception as e:
+            logger.error(f"subects_static {e} ")
         return res_gs, res_soc, table_name, reference_id
     except Exception as e:
         logger.error(f"subects_static {e}")
@@ -886,6 +973,7 @@ def add_table_trust(document, table_number, header, table_data_range,
     parag_table_1.runs[-1].font.size = docx.shared.Pt(12)
     parag_table_1.runs[-1].italic = True
     parag_table_1.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.RIGHT
+    parag_table_1.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
 
     table = document.add_table(rows=0, cols=4)
     # table.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER
@@ -906,6 +994,7 @@ def add_table_trust(document, table_number, header, table_data_range,
 
     for cell in table.rows[0].cells[1:]:
         cell.paragraphs[0].runs[0].bold = True
+
         set_center(cell)
     if table_data_range:
         table_data_range = sorted(table_data_range, key=lambda x: x[0], reverse=True)
@@ -1413,6 +1502,7 @@ def add_chart_pict(parag_title, text):
         style=STYLE
     )
     parag_title.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER
+    parag_title.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
 
     parag_title.style.font.size = docx.shared.Pt(12)
     parag_title.runs[-1].font.size = docx.shared.Pt(12)
