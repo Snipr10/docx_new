@@ -13,9 +13,11 @@ login_l = "java_api"
 password_p = "4yEcwVnjEH7D"
 
 if DOMAIN_URL != "https://api.glassen-it.com":
-    NETWORK_IDS = [1, 2, 4, 5, 8, 9, 10]
+    NETWORK_IDS = [1,2,4,5,8,10]
+
 else:
-    NETWORK_IDS = [1, 2, 3, 4, 5, 7, 8, 9, 10]
+    NETWORK_IDS = [1,2,4,5,8,10]
+
 
 if DOMAIN_URL == "https://isiao.glassen-it.com":
     login_l = "superadmin"

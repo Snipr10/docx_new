@@ -207,11 +207,11 @@ def check_friendly(post):
     return False
 
 
-async def get_posts_info(session, thread_id, periods_data, referenceFilter):
+async def get_posts_info(session, thread_id, periods_data, referenceFilter, network_id):
     table_gather = []
     for rec in referenceFilter:
         table_gather.append(get_posts(session, thread_id, periods_data.get("_from_data"), periods_data.get("_to_data"),
-                                      NETWORK_IDS, [rec]))
+                                      network_id, [rec]))
     res = {}
     for (posts, smi, social, friendly, friendly_smi, friendly_social, rec) in await asyncio.gather(
             *table_gather):

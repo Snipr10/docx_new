@@ -99,6 +99,12 @@ async def index(request: Request):
     for id_ in reference_ids_str:
         reference_ids.append(int(id_))
 
+    network_id = []
+    for id_ in body_json.get('network_id', []):
+        network_id.append(int(id_))
+    if not network_id:
+        network_id = NETWORK_IDS
+
     logger.info(f"body_json {body_json}")
 
     attempt = 0
@@ -106,7 +112,7 @@ async def index(request: Request):
     while attempt < max:
         try:
             document = await creater(reference_ids, body_json.get('login'), body_json.get('password'),
-                                     int(body_json.get('thread_id')), periods_data, friendly)
+                                     int(body_json.get('thread_id')), periods_data, network_id, friendly)
             f = BytesIO()
 
             document.save(f)
@@ -234,7 +240,7 @@ def delete_paragraph(paragraph):
     p._p = p._element = None
 
 
-async def creater(reference_ids, login_user, password, thread_id, periods_data, friendly_flag=True):
+async def creater(reference_ids, login_user, password, thread_id, periods_data, network_id, friendly_flag=True):
     async with httpx.AsyncClient() as session:
 
         await login(session, login_user, password)
@@ -280,7 +286,7 @@ async def creater(reference_ids, login_user, password, thread_id, periods_data, 
             topics_tables, statistic_tables, trust_tables, charts_data, posts_info, names = await get_tables(session,
                                                                                                       periods_data, sub,
                                                                                                       thread_id,
-                                                                                                      reference_ids)
+                                                                                                      reference_ids, network_id)
             #
             # topics_tables, statistic_tables, trust_tables, charts_data, posts_info = await get_tables_mocks(session,
             #                                                                                           periods_data, sub,
@@ -1200,13 +1206,10 @@ async def get_attendance_data(session, r):
     }
 
 
-async def get_trust(session, periods_data, sub, thread_id, reference_ids):
+async def get_trust(session, periods_data, sub, thread_id, reference_ids, network_ids):
     async with httpx.AsyncClient(cookies=session.cookies) as session:
         try:
             tables = []
-
-            network_ids = NETWORK_IDS
-
             table_gather = []
             names = []
             for s in sub:
@@ -1299,7 +1302,7 @@ async def get_start_date(session):
 #             logger.error(f"get_posts_statistic {e}")
 #             raise e
 
-async def get_posts_statistic(session, periods_data, sub, thread_id, reference_ids):
+async def get_posts_statistic(session, periods_data, sub, thread_id, reference_ids, network_id):
     async with httpx.AsyncClient(cookies=session.cookies) as session:
         try:
             tables = []
@@ -1308,7 +1311,7 @@ async def get_posts_statistic(session, periods_data, sub, thread_id, reference_i
                 chart_name = s['keyword']
                 reference_id = s['id']
                 if reference_id in reference_ids:
-                    table_gather.append(post_static(session, reference_id, thread_id, periods_data, chart_name))
+                    table_gather.append(post_static(session, reference_id, thread_id, periods_data, chart_name, network_id))
             for table_data, chart_name in await asyncio.gather(*table_gather):
                 if table_data:
                     tables.append((chart_name, table_data))
@@ -1340,29 +1343,31 @@ async def get_posts_statistic(session, periods_data, sub, thread_id, reference_i
 #     return posts, chart_name
 
 
-async def post_static(session, reference_id, thread_id, periods_data, chart_name):
+async def post_static(session, reference_id, thread_id, periods_data, chart_name, network_id=NETWORK_IDS):
     payload = {
         "thread_id": thread_id,
         "from": periods_data.get("_from_data"),
         "to": periods_data.get("_to_data"),
-        "filter": {"network_id": NETWORK_IDS,
+        "filter": {"network_id": network_id,
                    "referenceFilter": [reference_id]}
     }
     try:
         response = await post(session, STATISTIC_TRUST_GRAPH, payload)
     except Exception as e:
         pass
-    return response.json(), chart_name
+    res = response.json()
+    res['reference_id'] = reference_id
+    return res, chart_name
 
 
-async def get_tables(session, periods_data, sub, thread_id, reference_ids):
-    trust_tables, names = await get_trust(session, periods_data, sub, thread_id, reference_ids)
+async def get_tables(session, periods_data, sub, thread_id, reference_ids, network_id):
+    trust_tables, names = await get_trust(session, periods_data, sub, thread_id, reference_ids, network_id)
 
     topics_tables = await add_topics(session, periods_data, sub, thread_id, reference_ids)
 
-    statistic_tables = await  add_statistic(session, periods_data, sub, thread_id, reference_ids)
-    charts_data = await get_posts_statistic(session, periods_data, sub, thread_id, reference_ids)
-    posts_info = await get_posts_info(session, thread_id, periods_data, reference_ids)
+    # statistic_tables = await add_statistic(session, periods_data, sub, thread_id, reference_ids)
+    charts_data = await get_posts_statistic(session, periods_data, sub, thread_id, reference_ids, network_id)
+    posts_info = await get_posts_info(session, thread_id, periods_data, reference_ids, network_id)
     # trust_tables, topics_tables, statistic_tables, charts_data, posts_info = await asyncio.gather(
     #     get_trust(session, periods_data, sub, thread_id, reference_ids),
     #     add_topics(session, periods_data, sub, thread_id, reference_ids),
@@ -1370,6 +1375,64 @@ async def get_tables(session, periods_data, sub, thread_id, reference_ids):
     #     get_posts_statistic(session, periods_data, sub, thread_id, reference_ids),
     #     get_posts_info(session, thread_id, periods_data, reference_ids)
     # )
+
+    smi_list = []
+    soc_list = []
+    for head, info in charts_data:
+        smi_d = {'header':head}
+        soc_d = {'header':head}
+        neu = 0
+        neg = 0
+        positiv = 0
+        total = 0
+        atten = 0
+        for i in info.get('social'):
+            neu += i.get('netural')
+            neg += i.get('negative')
+            positiv += i.get('positive')
+            atten += i.get('attendance')
+            total += i.get('item_count')
+        soc_d['positive'] = {}
+        soc_d['negative'] = {}
+        soc_d['netural'] = {}
+        soc_d['total'] = {}
+        soc_d['positive']['posts'] = positiv
+        soc_d['negative']['posts'] = neg
+        soc_d['netural']['posts'] = neu
+        soc_d['total']['posts'] = total
+        soc_d['total']['attendance'] = atten
+        soc_d['reference_id'] = info['reference_id']
+
+        soc_list.append(soc_d)
+
+        neu = 0
+        neg = 0
+        positiv = 0
+        total = 0
+        atten = 0
+        for i in info.get("smi"):
+            neu += i.get('netural')
+            neg += i.get('negative')
+            positiv += i.get('positive')
+            atten += i.get('attendance')
+            total += i.get('item_count')
+        smi_d['positive'] = {}
+        smi_d['negative'] = {}
+        smi_d['netural'] = {}
+        smi_d['total'] = {}
+
+        smi_d['positive']['posts'] = positiv
+        smi_d['negative']['posts'] = neg
+        smi_d['netural']['posts'] = neu
+        smi_d['total']['posts'] = total
+        smi_d['total']['attendance'] = atten
+
+        smi_d['reference_id'] = info['reference_id']
+        del info['reference_id']
+
+        smi_list.append(smi_d)
+
+    statistic_tables = [('СМИ', smi_list), ('в социальных сетях', soc_list)]
 
     return topics_tables, statistic_tables, trust_tables, charts_data, posts_info, names
 
