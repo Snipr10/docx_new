@@ -1120,10 +1120,10 @@ def add_top5(table, table_data, social):
 
             add_hyperlink(row_cells[1].paragraphs[0], table_data[i][1]['url'], table_data[i][1]['url'], None, True)
 
-            text, add_link = remove_html_tags(table_data[i][1]['text'])
+            text, add_link = remove_html_tags(table_data[i][1]['text'] or " ")
             row_cells[3].paragraphs[0].add_run(text)
             if add_link:
-                add_hyperlink(row_cells[3].paragraphs[0], table_data[i][1]['url'], "далее по ссылке", None, True, True)
+                add_hyperlink(row_cells[3].paragraphs[0], table_data[i][1]['url'] or " ", "далее по ссылке", None, True, True)
 
             set_center(row_cells[2], "bottom")
             set_center(row_cells[0], "bottom")
@@ -1450,7 +1450,7 @@ def getParagraphRuns(paragraph):
 
 def add_hyperlink(paragraph, url, text, color, underline, is_italic=False):
     part = paragraph.part
-    r_id = part.relate_to(url, docx.opc.constants.RELATIONSHIP_TYPE.HYPERLINK, is_external=True)
+    r_id = part.relate_to(url or " ", docx.opc.constants.RELATIONSHIP_TYPE.HYPERLINK, is_external=True)
 
     hyperlink = docx.oxml.shared.OxmlElement('w:hyperlink')
     hyperlink.set(docx.oxml.shared.qn('r:id'), r_id, )
@@ -1473,7 +1473,7 @@ def add_hyperlink(paragraph, url, text, color, underline, is_italic=False):
         rPr.append(u)
 
     new_run.append(rPr)
-    new_run.text = text
+    new_run.text = text or " "
     new_run.style = STYLE
     new_run.size = docx.shared.Pt(10)
     hyperlink.append(new_run)
