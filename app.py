@@ -925,12 +925,12 @@ def add_top5(table, table_data, social):
                     "\n",
                     style=STYLE
                 )
-            add_hyperlink(row_cells[1].paragraphs[0], table_data[i][1]['url'], table_data[i][1]['url'], None, True)
+            add_hyperlink(row_cells[1].paragraphs[0], table_data[i][1]['url'] or " ", table_data[i][1]['url'] or " ", None, True)
 
-            text, add_link = remove_html_tags(table_data[i][1]['text'])
+            text, add_link = remove_html_tags(table_data[i][1]['text'] or " ")
             row_cells[3].paragraphs[0].add_run(text)
             if add_link:
-                add_hyperlink(row_cells[3].paragraphs[0], table_data[i][1]['url'], "далее по ссылке", None, True, True)
+                add_hyperlink(row_cells[3].paragraphs[0], table_data[i][1]['url'] or " ", "далее по ссылке", None, True, True)
 
             set_center(row_cells[2])
         except Exception as e:
